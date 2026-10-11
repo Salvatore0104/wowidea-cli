@@ -11,7 +11,7 @@ export interface KeyOptions {
   feather?: number;
   preferNative?: boolean;
   metric?: "rgb" | "chroma";
-  /** keep leaves the spill color, remove drops it, neutral is a gray semi-transparent shadow. */
+  /** keep leaves original pixels unchanged (no despill). remove drops the shadow. neutral is a gray semi-transparent shadow. */
   shadow?: ShadowMode;
   /** Dilation radius of the alpha boundary, in pixels. */
   edgeBand?: number;

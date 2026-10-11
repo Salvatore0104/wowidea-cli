@@ -123,10 +123,17 @@ export function validateCapabilities(selected: ReturnType<typeof routeModel>, pa
   return payload;
 }
 
-export function compactModelRow(row: any): { id: string; alias: string; types: string[]; upstream: string } {
+export const DRAFT_ALIAS_NOTE = "alias only, do not send as model — use 豆包Seedance-2.5 + draft:true";
+
+export function isDraftAlias(id: string): boolean {
+  return id === "Seedance-2.5-Draft";
+}
+
+export function compactModelRow(row: any): { id: string; alias: string; types: string[]; upstream: string; note?: string } {
   const entry = registryEntry(row);
   const id = String(row?.id || row?.model || row?.name || "");
-  return { id, alias: entry?.id || id, types: modelTypes(row), upstream: String(row?.modelName || row?.upstream || entry?.modelName || "") };
+  const alias = entry?.id || id;
+  return { id, alias, types: modelTypes(row), upstream: String(row?.modelName || row?.upstream || entry?.modelName || ""), ...(isDraftAlias(id) || isDraftAlias(alias) ? { note: DRAFT_ALIAS_NOTE } : {}) };
 }
 
 const VIDEO_TYPES = new Set(["video_generate", "image_to_video", "omni_video"]);
@@ -150,8 +157,14 @@ export function formatModelGroups(rows: any[]): string {
     const item = compactModelRow(row);
     const group = primaryModelGroup(item.types);
     const list = groups.get(group) || [];
-    if (item.id && !list.includes(item.id)) list.push(item.id);
+    const label = item.note ? `${item.id} — ${item.note}` : item.id;
+    if (label && !list.includes(label)) list.push(label);
     groups.set(group, list);
+  }
+  for (const [name, list] of groups) {
+    const sendable = list.filter(label => !label.startsWith("Seedance-2.5-Draft"));
+    const aliases = list.filter(label => label.startsWith("Seedance-2.5-Draft"));
+    groups.set(name, [...sendable, ...aliases]);
   }
   const preferred = ["image", "video", "text", "music", "speech", "3d"];
   const order = [...preferred, ...[...groups.keys()].filter(name => !preferred.includes(name))];

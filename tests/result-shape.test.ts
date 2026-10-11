@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { taskStatus } from "../src/submission.js";
 import { findUrls } from "../src/api.js";
 import { presentBalance } from "../src/usage.js";
-import { compactModelRow, formatModelGroups } from "../src/models.js";
+import { compactModelRow, DRAFT_ALIAS_NOTE, formatModelGroups } from "../src/models.js";
 
 describe("live result shapes", () => {
   it("treats a processing error on the tasks payload as still running", () => {
@@ -23,9 +23,11 @@ describe("live result shapes", () => {
     expect(presentBalance({ status: "success", data: { total: 12.5, balanceDetail: { availableForNewTask: 10 } } })).toMatchObject({ total: 12.5 });
     const rows = [
       { id: "Nano Banana 2", modelName: "nano-banana-2-ext", types: ["image_generate"] },
+      { id: "Seedance-2.5-Draft", modelName: "doubao-seedance-2-5-260628", types: ["video_generate"] },
       { id: "豆包Seedance-2.5", modelName: "doubao-seedance-2-5-260628", types: ["video_generate"] },
     ];
     expect(compactModelRow(rows[0])).toMatchObject({ id: "Nano Banana 2", alias: "Nano Banana 2", upstream: "nano-banana-2-ext", types: ["image_generate"] });
+    expect(compactModelRow(rows[1])).toMatchObject({ id: "Seedance-2.5-Draft", note: DRAFT_ALIAS_NOTE });
     expect(formatModelGroups([
       ...rows,
       { id: "frame-to-clip", types: ["image_to_video"] },
@@ -43,6 +45,7 @@ describe("live result shapes", () => {
       "  豆包Seedance-2.5",
       "  frame-to-clip",
       "  omni",
+      `  Seedance-2.5-Draft — ${DRAFT_ALIAS_NOTE}`,
       "text",
       "  vision",
       "  writer",

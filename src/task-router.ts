@@ -1,6 +1,6 @@
 import { CliError, ExitCode } from "./errors.js";
 import { readDataFile } from "./load-data.js";
-import { findModel } from "./models.js";
+import { DRAFT_ALIAS_NOTE, findModel, isDraftAlias } from "./models.js";
 
 export interface ModelCard {
   alias: string;
@@ -45,6 +45,7 @@ export interface ResolvedTask {
   command?: string;
   source: "table" | "live" | "static-fallback";
   entries: ModelCard[];
+  note?: string;
 }
 
 let cached: RoutingTable | undefined;
@@ -57,7 +58,7 @@ export function modelCard(alias: string): ModelCard | undefined {
   return row ? { alias, ...row } : undefined;
 }
 
-export function listTasks(): Array<{ id: string; label: string; media: string; model: string; alias: string; params?: { draft: boolean; resolution: string }; finalizeOnly: boolean }> {
+export function listTasks(): Array<{ id: string; label: string; media: string; model: string; alias: string; params?: { draft: boolean; resolution: string }; finalizeOnly: boolean; note?: string }> {
   const table = routingTable();
   return Object.entries(table.tasks).map(([id, task]) => {
     const alias = task.models[0] || "";
@@ -67,6 +68,7 @@ export function listTasks(): Array<{ id: string; label: string; media: string; m
       model: card?.requestModel || alias,
       ...(card?.draft ? { params: { draft: true, resolution: "480p" } } : {}),
       finalizeOnly: Boolean(task.finalizeOnly),
+      ...(isDraftAlias(alias) ? { note: DRAFT_ALIAS_NOTE } : {}),
     };
   });
 }
@@ -182,6 +184,7 @@ export function resolveTask(task: string, options: { fast?: boolean; stage?: str
   const params = card?.draft ? { draft: true, resolution: "480p" } : undefined;
   return {
     task: id, label: spec.label, media: spec.media, model, alias, params, chain, finalizeOnly: false, source,
+    ...(isDraftAlias(alias) ? { note: DRAFT_ALIAS_NOTE } : {}),
     entries: chain.map(name => modelCard(name)).filter((row): row is ModelCard => Boolean(row)),
   };
 }

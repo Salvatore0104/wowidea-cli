@@ -13,7 +13,7 @@ import { emit, OutputOptions } from "./output.js";
 import { localQuote, payloadHash, Quote, saveQuote } from "./preflight.js";
 import { approveManifest, creativeHash, readManifest, seedancePayload, uploadReferences, validateManifest, validateStoryboardQc } from "./seedance.js";
 import { submitAsyncWithRecovery, submitImageWithRecovery, listSubmissions, recoverSubmission, readGeneration, taskStatus, taskRows, generationSubmitTimeoutMs } from "./submission.js";
-import { compactModelRow, findModel, formatModelGroups, matchesModelType, registryEntry, routeModel, validateCapabilities } from "./models.js";
+import { compactModelRow, DRAFT_ALIAS_NOTE, findModel, formatModelGroups, matchesModelType, registryEntry, routeModel, validateCapabilities } from "./models.js";
 import { initProject, readProject, recordCreation } from "./project.js";
 import { guideRegistry, guideInfo, showGuide } from "./guides.js";
 import { prepareVideoPayload, withOmniContent } from "./video-payload.js";
@@ -221,7 +221,7 @@ video.command("finalize").description("Seedance 2.5 成片 from a successful dra
   if (!result.submitted && !result.deduped) { await output(result, c); process.exitCode = ExitCode.Usage; return; }
   if (o.wait !== false && result.taskId && result.deduped && !o.yes) {
     const task = await readGeneration(api, result.taskId);
-    await output({ ...result, status: taskStatus(task), paths: findUrls(task) }, c);
+    await output({ ...result, status: taskStatus(task), paths: null, urls: findUrls(task) }, c);
     return;
   }
   if (o.wait !== false && result.taskId && (result.submitted || (result.deduped && o.yes))) {
@@ -444,9 +444,10 @@ async function describeTask(task: string, fast: boolean, cmd: Command) {
   return {
     task: resolved.task, label: resolved.label, media: resolved.media, model: resolved.model, alias: resolved.alias, params: resolved.params, chain: resolved.chain,
     finalizeOnly: resolved.finalizeOnly, source: resolved.source, endpoint: endpointFor(resolved.media),
+    ...(resolved.alias === "Seedance-2.5-Draft" ? { note: DRAFT_ALIAS_NOTE } : {}),
     command: resolved.command || `wowidea ${generate} generate --task ${resolved.task} --prompt "..." --json --direct`,
     message: resolved.message,
-    entries: resolved.entries.map(entry => ({ alias: entry.alias, display: entry.display, requestModel: entry.requestModel, quality: entry.quality, speed: entry.speed, fallback: entry.fallback, draft: Boolean(entry.draft), finalizeOnly: Boolean(entry.finalizeOnly) })),
+    entries: resolved.entries.map(entry => ({ alias: entry.alias, display: entry.display, requestModel: entry.requestModel, quality: entry.quality, speed: entry.speed, fallback: entry.fallback, draft: Boolean(entry.draft), finalizeOnly: Boolean(entry.finalizeOnly), ...(entry.alias === "Seedance-2.5-Draft" ? { note: DRAFT_ALIAS_NOTE } : {}) })),
   };
 }
 models.option("--by-task <task>", "same as: models by-task <task>").option("--fast", "with --by-task, prefer the fast model");
@@ -495,7 +496,7 @@ program.command("layers").description("Transparent PNG layers. Example: wowidea 
   await output({ layers: rendered.layers.map(({ key, ...layer }) => ({ ...layer, keyColor: key })) }, c);
 });
 
-program.command("key").description("Cut a flat-color background to a transparent PNG. Example: wowidea key ./subject.png --out ./cutout.png --json").argument("<image>").option("--out <png>", "output PNG").option("--key <color>", "auto or #RRGGBB", "auto").option("--shadow <mode>", "keep, remove, or neutral (default neutral)").action(async (image: string, o, c) => {
+program.command("key").description("Cut a flat-color background to a transparent PNG. Example: wowidea key ./subject.png --out ./cutout.png --json").argument("<image>").option("--out <png>", "output PNG").option("--key <color>", "auto or #RRGGBB", "auto").option("--shadow <mode>", "keep = original pixels unchanged (no despill); remove drops the shadow; neutral (default) is a gray semi-transparent shadow").action(async (image: string, o, c) => {
   const shadow = o.shadow === undefined ? "neutral" : o.shadow;
   if (shadow !== "keep" && shadow !== "remove" && shadow !== "neutral") throw new CliError("--shadow must be keep, remove, or neutral.", ExitCode.Usage);
   const keyed = await keyImage(await readFile(resolve(image)), { key: o.key, shadow });

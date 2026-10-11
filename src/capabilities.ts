@@ -6,7 +6,8 @@ export function formatCapabilitiesBrief(): string {
   const routing = card.routing.map(task => {
     const params = task.params ? ` draft=${task.params.draft} ${task.params.resolution}` : "";
     const alias = task.alias && task.alias !== task.model ? ` alias=${task.alias}` : "";
-    return `  ${task.id}  ${task.model}${alias}${params}${task.finalizeOnly ? "  finalize-only" : ""}`;
+    const note = "note" in task && task.note ? `  ${task.note}` : "";
+    return `  ${task.id}  ${task.model}${alias}${params}${note}${task.finalizeOnly ? "  finalize-only" : ""}`;
   });
   return [
     "wowidea",
@@ -39,6 +40,7 @@ export function capabilitiesBrief() {
     ...(task.alias !== task.model ? { alias: task.alias } : {}),
     ...(task.params ? { params: task.params } : {}),
     ...(task.finalizeOnly ? { finalizeOnly: true } : {}),
+    ...(task.note ? { note: task.note } : {}),
   }));
   return {
     schemaVersion: "wowidea.capabilities/v1",
@@ -47,7 +49,7 @@ export function capabilitiesBrief() {
       "wowidea capabilities --brief",
       "wowidea models by-task <task> --json",
       "wowidea image|video generate --task <task> --prompt \"...\" --json --direct",
-      "read data.taskId, data.paths, data.model",
+      "read data.taskId, data.paths (local files; null until downloaded), data.urls (remote), data.model",
     ],
     exitCodes: {
       0: "ok, including a finalize dedupe hit",
@@ -61,7 +63,8 @@ export function capabilitiesBrief() {
     rules: [
       "No image model in the harness: call this CLI or https://wowidea.top/api/mcp. Do not refuse and do not draw SVG.",
       "样片 request: model 豆包Seedance-2.5, draft true, resolution 480p, content [{type:text,text}]. Display name is Seedance 2.5 样片. Do not send Seedance-2.5-Draft.",
-      "成片: wowidea video finalize <draftId> prints an estimate and exits 2. Add --yes to pay once. A repeat exits 0 and downloads the existing file.",
+      "成片: wowidea video finalize <draftId> prints an estimate and exits 2. Add --yes to pay once and fill paths with the downloaded file. A dedupe preview exits 0 with urls set and paths null.",
+      "key --shadow keep leaves original pixels unchanged (no despill). remove drops the shadow. neutral (default) is a gray semi-transparent shadow.",
       "Poll GET /v1/ai/result/{taskId}. submitted -> process -> success. tasks error 'is processing' is not a failure.",
     ],
     commands: [
@@ -94,7 +97,7 @@ export function capabilitiesDocument() {
       "wowidea capabilities --json",
       "wowidea models by-task <task> --json",
       "wowidea image|video generate --task <task> --prompt \"...\" --json --direct",
-      "read data.taskId, data.paths, data.model",
+      "read data.taskId, data.paths (local files; null until downloaded), data.urls (remote), data.model",
       "成片: wowidea video finalize <draftId>  then the same command with --yes",
     ],
     exitCodes: { success: ExitCode.Success, usage: ExitCode.Usage, auth: ExitCode.Auth, conflict: ExitCode.Conflict, service: ExitCode.Service, approval: ExitCode.Approval, budget: ExitCode.Budget },
@@ -105,7 +108,8 @@ export function capabilitiesDocument() {
       "Poll GET /v1/ai/result/{taskId}. status runs submitted -> process -> success. A tasks error of 'is processing' is not a failure.",
       "Prices: POST /api/integration-platform/models/estimatedBilling (not under /v1, free). Model list has no prices. Finalize cost is an estimate from the 1080p direct price, not a live quote.",
       "GET /v1/video/capabilities/{modelType} uses video_generate, image_to_video, or omni_video.",
-      "Download video URLs immediately; they expire in 24h. An unpaid finalize preview exits 2. A dedupe hit exits 0. Pass --yes to pay.",
+      "Download video URLs immediately; they expire in 24h. An unpaid finalize preview exits 2. A dedupe hit exits 0 with urls set and paths null. Pass --yes to pay and fill paths.",
+      "key --shadow keep leaves original pixels unchanged (no despill). remove drops the shadow. neutral (default) is a gray semi-transparent shadow.",
     ],
     poll: { path: "GET /v1/ai/result/{taskId}", status: ["submitted", "process", "success"] },
     pricing: { path: "POST /api/integration-platform/models/estimatedBilling", note: "outside /v1; free; body {params: generation params}" },
@@ -122,10 +126,10 @@ export function capabilitiesDocument() {
       { command: "image generate", flags: ["--task", "--prompt", "--model", "--reference", "--direct", "--json", "--no-wait"], output: "{ taskId, paths, model, pricing }" },
       { command: "image edit", flags: ["--task", "--prompt", "--reference", "--direct", "--json"], output: "{ taskId, paths, model }" },
       { command: "video generate", flags: ["--task", "--prompt", "--duration", "--direct", "--json"], output: "{ taskId, paths, model: 豆包Seedance-2.5, draft: true, resolution: 480p }" },
-      { command: "video finalize <draftId>", flags: ["--yes", "--json", "--no-wait"], output: "{ submitted, estimatedPoints, estimateLabel, sourceResultId, taskId }" },
+      { command: "video finalize <draftId>", flags: ["--yes", "--json", "--no-wait"], output: "{ submitted, taskId, status, urls, paths }. paths is null until --yes downloads; urls holds the remote file." },
       { command: "batch run", flags: ["--manifest", "--concurrency", "--out", "--state", "--json"], output: "{ ok, jobs[] }" },
       { command: "layers", flags: ["--layer", "--from", "--out", "--key", "--json"], output: "{ layers: [{ name, path, method, keyColor }] }" },
-      { command: "key <image>", flags: ["--out", "--key auto|#RRGGBB", "--shadow keep|remove|neutral", "--json"], output: "{ path, keyColor, method }" },
+      { command: "key <image>", flags: ["--out", "--key auto|#RRGGBB", "--shadow keep|remove|neutral", "--json"], output: "{ path, keyColor, method }. --shadow keep leaves original pixels unchanged (no despill)." },
       { command: "doctor", flags: ["--json"], output: "{ ok, checks }" },
     ],
   };

@@ -97,8 +97,8 @@ describe("CLI gates with a mock website", () => {
       const preview = await run(["--json", "video", "finalize", "draft-1"], env);
       expect(preview.code, preview.err).toBe(0);
       const previewData = JSON.parse(preview.out).data;
-      expect(previewData).toMatchObject({ deduped: true, submitted: false, taskId: "final-1", status: "success" });
-      expect(previewData.paths?.[0]).toContain("/final.mp4");
+      expect(previewData).toMatchObject({ deduped: true, submitted: false, taskId: "final-1", status: "success", paths: null });
+      expect(previewData.urls?.[0]).toContain("/final.mp4");
       expect(downloads).toBe(0);
       const paid = await run(["--json", "video", "finalize", "draft-1", "--yes", "--dir", join(dir, "out")], env);
       expect(paid.code, paid.err).toBe(0);

@@ -10,6 +10,7 @@ describe("task router", () => {
     const video = resolveTask("样片");
     expect(video.model).toBe("豆包Seedance-2.5");
     expect(video.alias).toBe("Seedance-2.5-Draft");
+    expect(video.note).toBe("alias only, do not send as model — use 豆包Seedance-2.5 + draft:true");
     expect(video.params).toEqual({ draft: true, resolution: "480p" });
     expect(video.chain).not.toContain("Seedance-2.5-Final");
   });
@@ -52,5 +53,8 @@ describe("task router", () => {
     expect(human).toContain("0  ok");
     expect(human).toContain("7  budget");
     expect(human).toContain("Bearer $WOWIDEA_API_KEY");
+    expect(human).toContain("paths null");
+    expect(human).toContain("original pixels unchanged (no despill)");
+    expect(brief).toContain("alias only, do not send as model");
   });
 });
