@@ -52,7 +52,7 @@ Skill 指令为英文，默认仍用用户语言交流。`$wowidea` 是媒体执
 
 ## 内置模型与默认
 
-内置 Nano Banana 2/Pro/2 Lite、GPT Image 2 与 2.5（含 Sunburst／Flare）、Midjourney v8.2/8.2-fast、MiniMax H3/H3-Max、Google Omni、Wan3.0/Prime、Seedance 2.0/2.0-fast/2.0-mini/2.5 指南。运行时以当前账号模型目录为准：Google Omni 不推定上游型号，Seedance 2.5 不继承 2.0 的参数限制，Midjourney 只走参数尾部语法。图片默认 Nano Banana 2，视频默认 Seedance 2.0；用户指定的模型、比例、分辨率、时长和素材优先，模型不可用时明确提示，不擅自替换。
+内置 Nano Banana 2/Pro/2 Lite、GPT Image 2 与 2.5（含 Sunburst／Flare）、Midjourney v8.2/8.2-fast、MiniMax H3/H3-Max、Google Omni、Wan3.0/Prime、Seedance 2.0/2.0-fast/2.0-mini/2.5 指南。运行时以当前账号模型目录为准：Google Omni 不推定上游型号，Seedance 2.5 不继承 2.0 的参数限制，Midjourney 只走参数尾部语法。图片默认 Nano Banana 2。视频样片默认请求 `豆包Seedance-2.5`（`draft: true`，480p）；`Seedance-2.5-Draft` 只是别名。用户指定的模型、比例、分辨率、时长和素材优先，模型不可用时明确提示，不擅自替换。
 
 ## 异步任务与生成
 

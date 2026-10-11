@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Docs: rewrite README and docs/install.md around the 0.8.0 command contract (install, API key, harness setup, routing, JSON, exit codes 0–7). `npm install -g github:Salvatore0104/wowidea-cli` is not a supported install path.
+
 ## 0.8.0
 
 - A finalizable Seedance 2.5 draft is `豆包Seedance-2.5` with `draft: true` and `480p`. The `Seedance-2.5-Draft` id is only a display alias.
