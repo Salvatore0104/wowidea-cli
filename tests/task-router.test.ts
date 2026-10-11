@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyDraftContract, canFallback, resolveTask, seedanceWirePayload } from "../src/task-router.js";
 import { CliError, redact } from "../src/errors.js";
-import { capabilitiesBrief, capabilitiesDocument } from "../src/capabilities.js";
+import { capabilitiesBrief, capabilitiesDocument, formatCapabilitiesBrief } from "../src/capabilities.js";
 
 describe("task router", () => {
   it("maps a task to a model chain and a fast alternate", () => {
@@ -46,5 +46,11 @@ describe("task router", () => {
     expect(brief.length).toBeLessThan(6000);
     expect(brief).toContain("\"6\"");
     expect(brief).toContain("\"7\"");
+    const human = formatCapabilitiesBrief();
+    expect(human.split("\n").length).toBeGreaterThan(12);
+    expect(human).toContain("Exit codes");
+    expect(human).toContain("0  ok");
+    expect(human).toContain("7  budget");
+    expect(human).toContain("Bearer $WOWIDEA_API_KEY");
   });
 });

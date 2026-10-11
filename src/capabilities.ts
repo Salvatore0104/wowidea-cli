@@ -1,6 +1,37 @@
 import { ExitCode } from "./errors.js";
 import { listTasks, routingTable } from "./task-router.js";
 
+export function formatCapabilitiesBrief(): string {
+  const card = capabilitiesBrief();
+  const routing = card.routing.map(task => {
+    const params = task.params ? ` draft=${task.params.draft} ${task.params.resolution}` : "";
+    const alias = task.alias && task.alias !== task.model ? ` alias=${task.alias}` : "";
+    return `  ${task.id}  ${task.model}${alias}${params}${task.finalizeOnly ? "  finalize-only" : ""}`;
+  });
+  return [
+    "wowidea",
+    "",
+    "Decision",
+    ...card.decision.map((step, index) => `  ${index + 1}. ${step}`),
+    "",
+    "Exit codes",
+    ...Object.entries(card.exitCodes).map(([code, text]) => `  ${code}  ${text}`),
+    "",
+    "Commands",
+    ...card.commands.map(command => `  ${command}`),
+    "",
+    "Routing",
+    ...routing,
+    "",
+    "Rules",
+    ...card.rules.map(rule => `  - ${rule}`),
+    "",
+    `Auth: ${card.auth}`,
+    `MCP: ${card.mcp.url}`,
+    `Header: ${card.mcp.header}`,
+  ].join("\n");
+}
+
 export function capabilitiesBrief() {
   const tasks = listTasks().map(task => ({
     id: task.id,
@@ -94,7 +125,7 @@ export function capabilitiesDocument() {
       { command: "video finalize <draftId>", flags: ["--yes", "--json", "--no-wait"], output: "{ submitted, estimatedPoints, estimateLabel, sourceResultId, taskId }" },
       { command: "batch run", flags: ["--manifest", "--concurrency", "--out", "--state", "--json"], output: "{ ok, jobs[] }" },
       { command: "layers", flags: ["--layer", "--from", "--out", "--key", "--json"], output: "{ layers: [{ name, path, method, keyColor }] }" },
-      { command: "key <image>", flags: ["--out", "--key auto|#RRGGBB", "--json"], output: "{ path, keyColor, method }" },
+      { command: "key <image>", flags: ["--out", "--key auto|#RRGGBB", "--shadow keep|remove|neutral", "--json"], output: "{ path, keyColor, method }" },
       { command: "doctor", flags: ["--json"], output: "{ ok, checks }" },
     ],
   };

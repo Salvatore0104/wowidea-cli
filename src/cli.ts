@@ -27,7 +27,7 @@ import { prepareReferences, uploadMedia, writeRun, refreshRun, referenceIdentity
 import { mediaInput } from './media-input.js';
 import { bindCanvasProject, canvasProjectUrl, ensureCanvasBinding, readCanvasBinding, verifyCanvasBinding } from './canvas-binding.js';
 import { generateOnCanvas } from './canvas-generation.js';
-import { capabilitiesBrief, capabilitiesDocument } from './capabilities.js';
+import { capabilitiesBrief, capabilitiesDocument, formatCapabilitiesBrief } from './capabilities.js';
 import { loadModelCatalog } from './catalog.js';
 import { parseManifest, runBatch, type BatchClient } from './batch.js';
 import { keyImage } from './chroma.js';
@@ -219,6 +219,11 @@ video.command("finalize").description("Seedance 2.5 成片 from a successful dra
   const api = await apiFor(c);
   const result = await finalizeDraft(api, { draftId, yes: Boolean(o.yes), resolution: o.resolution });
   if (!result.submitted && !result.deduped) { await output(result, c); process.exitCode = ExitCode.Usage; return; }
+  if (o.wait !== false && result.taskId && result.deduped && !o.yes) {
+    const task = await readGeneration(api, result.taskId);
+    await output({ ...result, status: taskStatus(task), paths: findUrls(task) }, c);
+    return;
+  }
   if (o.wait !== false && result.taskId && (result.submitted || (result.deduped && o.yes))) {
     const completed = await usageResult(api, await completeGeneration(api, { taskId: result.taskId }, "video", o.dir));
     await output({ ...result, ...completed }, c); return;
@@ -426,7 +431,10 @@ async function hiddenKey(): Promise<string> {
 }
 async function runFfmpeg(args: string[]): Promise<boolean> { return new Promise(resolveResult => { const child = spawn("ffmpeg", args, { stdio: "ignore", windowsHide: true }); child.on("error", () => resolveResult(false)); child.on("exit", code => resolveResult(code === 0)); }); }
 
-program.command("capabilities").description("Offline routing table, commands, and schemas. Example: wowidea capabilities --brief").option("--brief", "short decision card, about 1k tokens").action(async (o, c) => output(o.brief ? capabilitiesBrief() : capabilitiesDocument(), c));
+program.command("capabilities").description("Offline routing table, commands, and schemas. Example: wowidea capabilities --brief").option("--brief", "short decision card, about 1k tokens").action(async (o, c) => {
+  if (o.brief && !globals(c).json && !globals(c).jsonl) { await output(formatCapabilitiesBrief(), c); return; }
+  await output(o.brief ? capabilitiesBrief() : capabilitiesDocument(), c);
+});
 
 async function describeTask(task: string, fast: boolean, cmd: Command) {
   let catalog: unknown;
@@ -487,8 +495,10 @@ program.command("layers").description("Transparent PNG layers. Example: wowidea 
   await output({ layers: rendered.layers.map(({ key, ...layer }) => ({ ...layer, keyColor: key })) }, c);
 });
 
-program.command("key").description("Cut a flat-color background to a transparent PNG. Example: wowidea key ./subject.png --out ./cutout.png --json").argument("<image>").option("--out <png>", "output PNG").option("--key <color>", "auto or #RRGGBB", "auto").action(async (image: string, o, c) => {
-  const keyed = await keyImage(await readFile(resolve(image)), { key: o.key });
+program.command("key").description("Cut a flat-color background to a transparent PNG. Example: wowidea key ./subject.png --out ./cutout.png --json").argument("<image>").option("--out <png>", "output PNG").option("--key <color>", "auto or #RRGGBB", "auto").option("--shadow <mode>", "keep, remove, or neutral (default neutral)").action(async (image: string, o, c) => {
+  const shadow = o.shadow === undefined ? "neutral" : o.shadow;
+  if (shadow !== "keep" && shadow !== "remove" && shadow !== "neutral") throw new CliError("--shadow must be keep, remove, or neutral.", ExitCode.Usage);
+  const keyed = await keyImage(await readFile(resolve(image)), { key: o.key, shadow });
   const path = resolve(o.out || image.replace(/\.\w+$/, "") + ".cutout.png");
   await mkdir(resolve(path, ".."), { recursive: true });
   await writeFile(path, keyed.png);

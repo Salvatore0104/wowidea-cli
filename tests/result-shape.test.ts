@@ -26,6 +26,33 @@ describe("live result shapes", () => {
       { id: "豆包Seedance-2.5", modelName: "doubao-seedance-2-5-260628", types: ["video_generate"] },
     ];
     expect(compactModelRow(rows[0])).toMatchObject({ id: "Nano Banana 2", alias: "Nano Banana 2", upstream: "nano-banana-2-ext", types: ["image_generate"] });
-    expect(formatModelGroups(rows)).toBe("image\n  Nano Banana 2\nvideo\n  豆包Seedance-2.5");
+    expect(formatModelGroups([
+      ...rows,
+      { id: "frame-to-clip", types: ["image_to_video"] },
+      { id: "omni", types: ["image_generate", "omni_video"] },
+      { id: "vision", types: ["image_analysis"] },
+      { id: "writer", types: ["text_generate"] },
+      { id: "tools", types: ["tools_call"] },
+      { id: "score", types: ["audio_generate"] },
+      { id: "narrator", types: ["text_to_speech"] },
+      { id: "mesh", types: ["3d_generate"] },
+    ])).toBe([
+      "image",
+      "  Nano Banana 2",
+      "video",
+      "  豆包Seedance-2.5",
+      "  frame-to-clip",
+      "  omni",
+      "text",
+      "  vision",
+      "  writer",
+      "  tools",
+      "music",
+      "  score",
+      "speech",
+      "  narrator",
+      "3d",
+      "  mesh",
+    ].join("\n"));
   });
 });

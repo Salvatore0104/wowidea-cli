@@ -79,9 +79,10 @@ describe("CLI gates with a mock website", () => {
     } finally { await new Promise<void>(r => server.close(() => r())); }
   });
   it("downloads an existing final when finalize --yes is deduped, and a dedupe preview exits 0", async () => {
+    let downloads = 0;
     const server = createServer((req, res) => {
       const base = `http://127.0.0.1:${(server.address() as any).port}`;
-      if (req.url === "/final.mp4") { res.end("final-bytes"); return; }
+      if (req.url === "/final.mp4") { downloads += 1; res.end("final-bytes"); return; }
       res.setHeader("Content-Type", "application/json");
       const draft = { task_id: "draft-1", status: "success", task_status: "succeeded", data: [{ url: `${base}/final.mp4`, videoGeneration: { resultId: "draft-1:0", stage: "draft", model: "doubao-seedance-2-5-260628", resolution: "480p", finalResolutions: ["1080p"], duration: 4, finalizeExpiresAt: Date.now() + 86400000 } }] };
       if (req.url === "/api/v1/ai/result/draft-1") { res.end(JSON.stringify(draft)); return; }
@@ -95,14 +96,26 @@ describe("CLI gates with a mock website", () => {
     try {
       const preview = await run(["--json", "video", "finalize", "draft-1"], env);
       expect(preview.code, preview.err).toBe(0);
-      expect(JSON.parse(preview.out).data).toMatchObject({ deduped: true, submitted: false, taskId: "final-1" });
+      const previewData = JSON.parse(preview.out).data;
+      expect(previewData).toMatchObject({ deduped: true, submitted: false, taskId: "final-1", status: "success" });
+      expect(previewData.paths?.[0]).toContain("/final.mp4");
+      expect(downloads).toBe(0);
       const paid = await run(["--json", "video", "finalize", "draft-1", "--yes", "--dir", join(dir, "out")], env);
       expect(paid.code, paid.err).toBe(0);
       const data = JSON.parse(paid.out).data;
       expect(data).toMatchObject({ deduped: true, taskId: "final-1", status: "success" });
       expect(data.paths).toHaveLength(1);
       expect(await readFile(data.paths[0], "utf8")).toBe("final-bytes");
+      expect(downloads).toBe(1);
     } finally { await new Promise<void>(r => server.close(() => r())); }
+  });
+  it("prints a readable capabilities brief without --json", async () => {
+    const brief = await run(["capabilities", "--brief"], {});
+    expect(brief.code, brief.err).toBe(0);
+    expect(brief.out.split("\n").length).toBeGreaterThan(12);
+    expect(brief.out).toContain("Exit codes");
+    expect(brief.out).toContain("7  budget");
+    expect(brief.out).not.toMatch(/^\s*\{/);
   });
   it("prints capabilities and refuses a final prompt without calling the website", async () => {
     const caps = await run(["capabilities", "--json"], {});

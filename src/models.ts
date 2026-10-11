@@ -129,15 +129,31 @@ export function compactModelRow(row: any): { id: string; alias: string; types: s
   return { id, alias: entry?.id || id, types: modelTypes(row), upstream: String(row?.modelName || row?.upstream || entry?.modelName || "") };
 }
 
+const VIDEO_TYPES = new Set(["video_generate", "image_to_video", "omni_video"]);
+const IMAGE_TYPES = new Set(["image_generate", "image_edit"]);
+const TEXT_TYPES = new Set(["text_generate", "tools_call", "image_analysis"]);
+
+export function primaryModelGroup(types: string[]): string {
+  const names = types.map(type => type.toLowerCase());
+  if (names.some(type => VIDEO_TYPES.has(type))) return "video";
+  if (names.some(type => IMAGE_TYPES.has(type))) return "image";
+  if (names.some(type => TEXT_TYPES.has(type))) return "text";
+  if (names.includes("audio_generate")) return "music";
+  if (names.includes("text_to_speech")) return "speech";
+  if (names.some(type => type.includes("3d"))) return "3d";
+  return names[0] || "other";
+}
+
 export function formatModelGroups(rows: any[]): string {
   const groups = new Map<string, string[]>();
   for (const row of rows) {
     const item = compactModelRow(row);
-    const group = item.types.some(type => type.startsWith("image")) ? "image" : item.types.some(type => type.includes("video")) ? "video" : (item.types[0] || "other");
+    const group = primaryModelGroup(item.types);
     const list = groups.get(group) || [];
     if (item.id && !list.includes(item.id)) list.push(item.id);
     groups.set(group, list);
   }
-  const order = ["image", "video", ...[...groups.keys()].filter(name => name !== "image" && name !== "video")];
+  const preferred = ["image", "video", "text", "music", "speech", "3d"];
+  const order = [...preferred, ...[...groups.keys()].filter(name => !preferred.includes(name))];
   return order.filter(name => groups.get(name)?.length).map(name => `${name}\n${groups.get(name)!.map(id => `  ${id}`).join("\n")}`).join("\n");
 }
