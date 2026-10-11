@@ -21,7 +21,7 @@ wowidea key ./subject.png --out ./cutout.png --json
 wowidea batch run --manifest jobs.json --concurrency 6 --json
 ```
 
-视频默认 `Seedance-2.5-Draft`（样片）。成片不是第二次提交提示词：`video finalize` 先打印估价，非交互环境必须加 `--yes` 才会扣费。同一条样片不会成片两次。批量和自动回退不会提交成片。
+视频样片的显示名是 Seedance 2.5 样片，实际请求是 `豆包Seedance-2.5`、`draft: true`、`480p`。别名 `Seedance-2.5-Draft` 不能生成可成片的样片。成片固定 1080p：`video finalize` 先打印估算价（按 1080p 直接生成价 149.68 积分/4 秒，不是精确报价）并以退出码 2 停下，加上 `--yes` 才会扣费。同一条样片不会成片两次。结果轮询 `GET /v1/ai/result/{id}`。视频地址 24 小时内失效，会立刻下载。
 
 没有内置画图的助手应调用本 CLI，或连接已有 MCP，不要拒绝，也不要改画 SVG：
 
@@ -40,7 +40,7 @@ wowidea batch run --manifest jobs.json --concurrency 6 --json
 | retouch-precise 精修 | Nano Banana Pro |
 | typography 海报文字 | gpt-image-2.5 |
 | layering 分层 | Doubao-Seedream-5.0-flash，高质量用 layering-hq |
-| video 样片 | Seedance-2.5-Draft |
+| video 样片 | 显示名 Seedance 2.5 样片；请求 `豆包Seedance-2.5` + draft + 480p |
 | video-final 成片 | 仅 `video finalize`，模型 Seedance-2.5-Final |
 | 3d / music / tts | Trip3D、Suno V6、MiniMax Speech 2.8 |
 

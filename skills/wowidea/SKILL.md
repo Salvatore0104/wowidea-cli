@@ -19,4 +19,4 @@ wowidea key ./subject.png --out ./cutout.png --json
 wowidea batch run --manifest jobs.json --concurrency 6 --json
 ```
 
-Read `data.taskId`, `data.paths`, `data.model`. Video default is Seedance-2.5-Draft. 成片 is only `video finalize`, after the printed cost, with `--yes`. Never put a final in batch or a fallback chain. Key: `WOWIDEA_API_KEY`.
+Read `data.taskId`, `data.paths`, `data.model`. 样片 request is `豆包Seedance-2.5`, `draft:true`, `480p` (display name Seedance 2.5 样片). Poll `GET /v1/ai/result/{taskId}`. 成片 is only `video finalize` at 1080p; the printed cost is an estimate. Add `--yes` to pay. Never batch a final. Download video URLs immediately. Key: `WOWIDEA_API_KEY`.

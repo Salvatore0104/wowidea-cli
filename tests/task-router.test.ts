@@ -23,8 +23,8 @@ describe("task router", () => {
   });
 
   it("writes the draft contract and does not treat an uncertain failure as a fallback", () => {
-    expect(applyDraftContract({ prompt: "push" }, "Seedance-2.5-Draft")).toMatchObject({ draft: true, resolution: "720p", watermark: false });
-    expect(() => applyDraftContract({ resolution: "1080p" }, "Seedance-2.5-Draft")).toThrow(/finalize/);
+    expect(applyDraftContract({ prompt: "push" }, "Seedance-2.5-Draft")).toMatchObject({ model: "豆包Seedance-2.5", draft: true, resolution: "480p", duration: 4, watermark: false, content: [{ type: "text", text: "push" }] });
+    expect(() => applyDraftContract({ resolution: "1080p" }, "Seedance-2.5-Draft")).toThrow(/480p/);
     expect(() => applyDraftContract({ prompt: "x" }, "Seedance-2.5-Final")).toThrow(/finalize/);
     expect(canFallback(new CliError("Model unavailable", 2))).toBe(true);
     expect(canFallback(new CliError("Task did not expose a downloadable video", 5))).toBe(false);

@@ -211,7 +211,8 @@
       "purposes": ["video", "draft"],
       "quality": "draft",
       "speed": "fast",
-      "reliability": "视频默认。样片，不是成片。成片必须 video finalize",
+      "requestModel": "豆包Seedance-2.5",
+      "reliability": "显示名仍是 Seedance 2.5 样片。请求必须是 model 豆包Seedance-2.5、draft true、480p。别名 Seedance-2.5-Draft 不会生成可成片样片。成片用 video finalize",
       "fallback": ["豆包Seedance-2.0-fast", "豆包Seedance-2.0", "豆包Seedance-2.0-mini", "Wan3.0-Video", "MiniMax-H3", "Google Omni"],
       "nativeTransparency": false,
       "draft": true

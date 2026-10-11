@@ -56,21 +56,22 @@ describe("CLI gates with a mock website", () => {
     } finally { await new Promise<void>(r => server.close(() => r())); }
   });
   it("submits a Seedance 2.5 draft without a manifest and marks draft:true", async () => {
-    let posted: Record<string, unknown> | undefined;
+    let posted: Record<string, unknown> | undefined; let asyncHeader = "";
     const server = createServer((req, res) => {
       res.setHeader("Content-Type", "application/json");
       if (req.url === "/api/v1/models") { res.end(JSON.stringify({ data: [{ id: "Seedance-2.5-Draft", capabilities: { omni_video: { supported_modes: ["text_to_video"], duration_range: [4, 15], output_resolutions: ["480p", "720p"], aspect_ratio_allowed: ["16:9"], output_audio: true } } }] })); return; }
       if (req.url === "/api/integration-platform/models/estimatedBilling") { let body = ""; req.on("data", d => body += d); req.on("end", () => res.end(JSON.stringify({ amount: 8, estimatedPower: 8, calculation: {} }))); return; }
-      if (req.method === "POST" && req.url === "/api/v1/video/generations") { let body = ""; req.on("data", d => body += d); req.on("end", () => { posted = JSON.parse(body); res.end(JSON.stringify({ taskId: "draft-job", status: "queued" })); }); return; }
+      if (req.method === "POST" && req.url === "/api/v1/video/generations") { let body = ""; req.on("data", d => body += d); req.on("end", () => { posted = JSON.parse(body); asyncHeader = String(req.headers["x-async"] || ""); res.statusCode = 201; res.end(JSON.stringify({ task_id: "draft-job", status: "submitted", query_url: "http://127.0.0.1/api/v1/ai/result/draft-job" })); }); return; }
       res.end(JSON.stringify({ taskId: "draft-job", status: "queued" }));
     });
     await new Promise<void>(r => server.listen(0, "127.0.0.1", r));
     const dir = await mkdtemp(join(tmpdir(), "wowidea-draft-cli-")); dirs.push(dir);
     const env = { EASYAI_CONFIG_DIR: dir, EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
     try {
-      const result = await run(["--json", "video", "generate", "--direct", "--no-wait", "--data", JSON.stringify({ model: "Seedance-2.5-Draft", prompt: "slow push", duration: 5, resolution: "720p", aspect_ratio: "16:9", audio: false })], env);
+      const result = await run(["--json", "video", "generate", "--direct", "--no-wait", "--data", JSON.stringify({ model: "Seedance-2.5-Draft", prompt: "slow push", duration: 4, aspect_ratio: "16:9", audio: false })], env);
       expect(result.code, result.err).toBe(0);
-      expect(posted).toMatchObject({ model: "Seedance-2.5-Draft", draft: true, resolution: "720p", watermark: false });
+      expect(asyncHeader).toBe("true");
+      expect(posted).toMatchObject({ model: "豆包Seedance-2.5", draft: true, resolution: "480p", duration: 4, watermark: false, audio: false, content: [{ type: "text", text: "slow push" }] });
     } finally { await new Promise<void>(r => server.close(() => r())); }
   });
   it("prints capabilities and refuses a final prompt without calling the website", async () => {

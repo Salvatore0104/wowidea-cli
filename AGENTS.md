@@ -18,7 +18,7 @@ wowidea video finalize <draftId> --yes    # paid 成片, once
 | retouch-precise | Nano Banana Pro |
 | typography | gpt-image-2.5 |
 | layering | Seedream flash, then `wowidea key` or `wowidea layers` |
-| video | Seedance-2.5-Draft. Never auto-pick Seedance-2.5-Final |
+| video | display Seedance 2.5 样片. Request `豆包Seedance-2.5` + `draft:true` + `480p`. Never send `Seedance-2.5-Draft` and never auto-pick a final |
 | video-final / 成片 | `video finalize <draftId> --yes` only |
 
 Auth: `WOWIDEA_API_KEY`. MCP: `https://wowidea.top/api/mcp` with `Authorization: Bearer`. Exit 0 ok, 2 usage (including unpaid finalize preview), 3 auth, 4 conflict, 5 service.

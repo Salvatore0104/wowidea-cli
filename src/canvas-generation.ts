@@ -156,7 +156,7 @@ async function finishTask(client: CanvasApiClient, api: EasyAiApi, projectId: st
   const urls = [...new Set([...findUrls(task), ...findUrls(node)])];
   const paths = success(task) && urls.length ? await downloadUrls(urls, resolve(outputDir, id)) : [];
   const innerId = mediaTaskId(task) || mediaTaskId(node);
-  const mediaTask = innerId ? await api.get<any>(`/v1/tasks/${encodeURIComponent(innerId)}`).catch(() => undefined) : undefined;
+  const mediaTask = innerId ? await api.get<any>(`/v1/ai/result/${encodeURIComponent(innerId)}`).catch(() => api.get<any>(`/v1/tasks/${encodeURIComponent(innerId)}`).catch(() => undefined)) : undefined;
   const accounted = await usageResult(api, mediaTask || task);
   return { projectId, nodeId, taskId: id, canvasUrl, mediaTaskId: innerId, status: status(task), paths, pointsUsage: accounted.pointsUsage, outputSpec: canvasOutputSpec(node, expectedAspectRatio), task, ...(mediaTask ? { mediaTask } : {}) };
 }

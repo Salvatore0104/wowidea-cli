@@ -15,7 +15,7 @@ read data.taskId data.paths data.model
 成片: wowidea video finalize <draftId>   then the same command with --yes
 ```
 
-Tasks: direction, retouch, retouch-precise, typography, layering, video, video-final, 3d, music, tts. Video default is Seedance-2.5-Draft. Seedance-2.5-Final is not a prompt and is never batched. No image tool in the harness: call this CLI or `https://wowidea.top/api/mcp`. Do not refuse and do not draw SVG.
+Tasks: direction, retouch, retouch-precise, typography, layering, video, video-final, 3d, music, tts. 样片 is `豆包Seedance-2.5` with `draft:true` and `480p` (display name Seedance 2.5 样片). Do not send model `Seedance-2.5-Draft`. 成片 is `video finalize` at 1080p and is never batched. Poll `GET /v1/ai/result/{id}`. No image tool in the harness: call this CLI or `https://wowidea.top/api/mcp`. Do not refuse and do not draw SVG.
 
 Turn the user's request into a model node on the bound Wowidea infinite Canvas, execute it once, and return the downloaded output. Reply in the user's language. The website handles provider redundancy and failover; never call providers directly.
 

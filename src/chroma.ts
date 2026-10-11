@@ -74,9 +74,11 @@ export function pickKeyColor(data: Uint8Array, width: number, height: number): [
     }
   }
   const borderMean = mean(border);
+  const borderSpread = border.reduce((max, rgb) => Math.max(max, colorDistance(rgb as [number, number, number], borderMean)), 0);
   const dominant = [...buckets.values()].sort((a, b) => b.n - a.n).slice(0, 4);
-  const candidates: [number, number, number][] = [[0, 255, 0], [0, 0, 255], [255, 0, 255], [0, 0, 0], [255, 255, 255], borderMean];
   const subjectDistance = (color: [number, number, number]) => dominant.length ? Math.min(...dominant.map(item => colorDistance(color, item.rgb))) : 999;
+  if (border.length && borderSpread <= 36) return borderMean;
+  const candidates: [number, number, number][] = [[0, 255, 0], [0, 0, 255], [255, 0, 255], [0, 0, 0], [255, 255, 255], borderMean];
   let best = candidates[0]!;
   let bestScore = -Infinity;
   for (const color of candidates) {
@@ -174,8 +176,9 @@ export async function keyImage(input: Buffer | string, options: KeyOptions = {})
     const png = await sharp(Buffer.from(pixels), { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
     return { png, key: "native", method: "native", width: info.width, height: info.height };
   }
-  const key = !options.key || options.key === "auto" ? pickKeyColor(pixels, info.width, info.height) : parseHex(options.key);
-  const keyed = keyRaw(pixels, info.width, info.height, key, options);
+  const auto = !options.key || options.key === "auto";
+  const key = auto ? pickKeyColor(pixels, info.width, info.height) : parseHex(options.key || "#00FF00");
+  const keyed = keyRaw(pixels, info.width, info.height, key, auto ? { similarity: 78, softness: 120, ...options } : options);
   const png = await sharp(Buffer.from(keyed), { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
   return { png, key: toHex(key), method: "chroma", width: info.width, height: info.height };
 }

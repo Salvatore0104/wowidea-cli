@@ -1,5 +1,5 @@
 import { EasyAiApi, findUrls } from "./api.js";
-import { CliError, ExitCode, redact } from "./errors.js";
+import { CliError, ExitCode, isNotFound, redact } from "./errors.js";
 import { mkdir, readFile, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { configDir } from "./config.js";
@@ -15,15 +15,27 @@ export function taskId(value: any): string | undefined {
     if (nested) return nested;
   }
 }
+function processingNoise(value: any): boolean {
+  return /is processing/i.test(`${value?.error || ""} ${value?.errorMessage || ""} ${value?.message || ""}`);
+}
 export function taskStatus(value: any): string {
   if (!value || typeof value !== "object") return "unknown";
   const direct = value.status || value.task_status;
-  if (direct) return String(direct).toLowerCase();
+  if (direct) {
+    const status = String(direct).toLowerCase();
+    if (processingNoise(value) && ["running", "process", "submitted", "pending", "queued"].includes(status)) return "process";
+    return status;
+  }
+  if (processingNoise(value)) return "process";
   for (const key of ["data", "result", "task"]) {
     const nested = taskStatus(value[key]);
     if (nested !== "unknown") return nested;
   }
   return "unknown";
+}
+export async function readGeneration(api: EasyAiApi, id: string): Promise<unknown> {
+  try { return await api.get(`/v1/ai/result/${encodeURIComponent(id)}`); }
+  catch (error) { if (!isNotFound(error)) throw error; return api.get(`/v1/tasks/${encodeURIComponent(id)}`); }
 }
 function recordDir(api: EasyAiApi) { return join(configDir(), "tasks", api.scope || "test"); }
 function recordPath(api: EasyAiApi, key: string) { return join(recordDir(api), `${payloadHash(key)}.json`); }
@@ -41,7 +53,7 @@ export async function recoverSubmission(api: EasyAiApi, key: string): Promise<un
   const file = recordPath(api, key);
   const record = JSON.parse(await readFile(file, "utf8"));
   if (record.state === "rejected") throw new CliError(`Submission ${key} was rejected before acceptance: ${record.error || "validation failure"}. No recovery or resubmission was attempted.`, ExitCode.Usage);
-  if (record.taskId) return api.get(`/v1/tasks/${encodeURIComponent(record.taskId)}`);
+  if (record.taskId) return readGeneration(api, record.taskId);
   if (record.state === 'completed' && record.result && findUrls(record.result).length) return record.result;
   const found = await api.get(`/v1/tasks?idempotencyKey=${encodeURIComponent(key)}`);
   const rows = taskRows(found);
@@ -142,7 +154,7 @@ export async function submitAsyncWithRecovery(api: EasyAiApi, path: string, payl
     } catch { /* idempotency-key recovery remains available */ }
     record.state = "uncertain";
     await writeJson(file, record);
-    const headers = { "Idempotency-Key": idempotencyKey };
+    const headers = { "Idempotency-Key": idempotencyKey, "x-async": "true" };
     const result = options.submitTimeoutMs && "postWithTimeout" in api ? await api.postWithTimeout(path, payload, headers, options.submitTimeoutMs) : await api.post(path, payload, headers);
     const id = taskId(result);
     if (!id && !path.includes("images")) throw new CliError("Submission returned no task ID", ExitCode.Service);

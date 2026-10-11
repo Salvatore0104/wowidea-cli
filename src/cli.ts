@@ -12,7 +12,7 @@ import { CliError, ExitCode, isNotFound, redact } from "./errors.js";
 import { emit, OutputOptions } from "./output.js";
 import { localQuote, payloadHash, Quote, saveQuote } from "./preflight.js";
 import { approveManifest, creativeHash, readManifest, seedancePayload, uploadReferences, validateManifest, validateStoryboardQc } from "./seedance.js";
-import { submitAsyncWithRecovery, submitImageWithRecovery, listSubmissions, recoverSubmission, taskStatus, taskRows, generationSubmitTimeoutMs } from "./submission.js";
+import { submitAsyncWithRecovery, submitImageWithRecovery, listSubmissions, recoverSubmission, readGeneration, taskStatus, taskRows, generationSubmitTimeoutMs } from "./submission.js";
 import { findModel, matchesModelType, registryEntry, routeModel, validateCapabilities } from "./models.js";
 import { initProject, readProject, recordCreation } from "./project.js";
 import { guideRegistry, guideInfo, showGuide } from "./guides.js";
@@ -165,8 +165,8 @@ tasks.command("resume").argument("<idempotencyKey>").option('--wait', 'wait and 
 program.command("balance").action(async (_o, c) => output(await (await apiFor(c)).get("/v1/balance"), c));
 
 function taskCommands(parent: Command, media: "image" | "video") {
-  parent.command("status").argument("<taskId>").action(async (id, _o, c) => (async()=>{const api=await apiFor(c);await output(await usageResult(api,await api.get(`/v1/tasks/${enc(id)}`)),c)})());
-  parent.command("download").argument("<taskId>").option("--dir <path>", "download directory", ".").action(async (id, o, c) => { const api=await apiFor(c); const value = await api.get(`/v1/tasks/${enc(id)}`); await output(await usageResult(api,{ taskId: id, task:value, paths: await downloadUrls(findUrls(value), resolve(o.dir,id)) }), c); });
+  parent.command("status").argument("<taskId>").action(async (id, _o, c) => (async()=>{const api=await apiFor(c);await output(await usageResult(api,await readGeneration(api,id)),c)})());
+  parent.command("download").argument("<taskId>").option("--dir <path>", "download directory", ".").action(async (id, o, c) => { const api=await apiFor(c); const value = await readGeneration(api, id); await output(await usageResult(api,{ taskId: id, task:value, paths: await downloadUrls(findUrls(value), resolve(o.dir,id)) }), c); });
   parent.command("watch").argument("<taskId>").option("--interval <ms>", "poll interval", "2000").action(async (id, o, c) => watchTask(await apiFor(c), id, Number(o.interval), c));
   if (media === "video") {
     parent.command("cancel").argument("<taskId>").action(async (id, _o, c) => output(await (await apiFor(c)).post(`/v1/tasks/${enc(id)}/cancel`), c));
@@ -284,6 +284,7 @@ function registerMedia(parent: Command, kind: 'image'|'video') {
     if (kind === 'video') {
       const has = (field: string) => Array.isArray(payload[field]) && (payload[field] as unknown[]).length > 0;
       payload.mode ??= has('video_urls') ? 'video_reference' : has('image_urls') ? 'image_reference' : has('audio_urls') ? 'audio_reference' : 'text_to_video';
+      payload = applyDraftContract(payload, selected.id);
     }
     const allCapabilities = selected.capabilities.capabilities || {};
     const baseCapability = kind === 'image' ? allCapabilities[payload.image_urls ? 'image_edit' : 'image_generate'] || {} : allCapabilities.omni_video || allCapabilities[payload.mode === 'text_to_video' ? 'video_generate' : 'image_to_video'] || {};
@@ -295,7 +296,7 @@ function registerMedia(parent: Command, kind: 'image'|'video') {
       payload.duration ??= capability.forced_duration ?? (capability.duration_options?.includes(5) ? 5 : capability.duration_options?.[0] ?? Math.max(5, capability.duration_range?.[0] || 5));
       payload.audio ??= capability.output_audio_mode === 'always';
     }
-    if(kind==='video') { payload=applyDraftContract(payload, selected.id); payload=prepareVideoPayload(payload); if(allCapabilities.omni_video) payload=withOmniContent(payload); }
+    if(kind==='video') { payload=prepareVideoPayload(payload); if(allCapabilities.omni_video && !payload.draft) payload=withOmniContent(payload); }
     payload=normalizeRequest(payload,kind); validateCapabilities(selected,payload);
     if(kind==='image' && payload.image_urls) { payload.image=payload.image_urls; delete payload.image_urls; }
     const offlinePricing=estimate(book,selected.model,kind,payload);
@@ -330,7 +331,7 @@ async function watchTask(api: EasyAiApi, id: string, interval: number, cmd: Comm
   const deadline = Date.now() + 30 * 60_000;
   let cursor = "";
   while (Date.now() < deadline) {
-    const task = await api.get<any>(`/v1/tasks/${enc(id)}`); const status = taskStatus(task);
+    const task = await readGeneration(api, id); const status = taskStatus(task);
     const terminal = ["completed", "succeeded", "success", "failed", "error", "cancelled", "canceled"].includes(status);
     if (globals(cmd).jsonl) await output(terminal ? await usageResult(api, { taskId: id, status, task }) : { taskId: id, status, cursor }, cmd);
     if (terminal) { if (!globals(cmd).jsonl) await output(await usageResult(api, task), cmd); return; }
@@ -349,7 +350,7 @@ async function completeGeneration(api: EasyAiApi, submitted: unknown, kind: "ima
   if (id && (!terminal() || (successful() && !urls.length))) {
     const deadline = Date.now() + 30 * 60_000;
     while (Date.now() < deadline) {
-      task = await api.get(`/v1/tasks/${enc(id)}`); status = taskStatus(task); urls = findUrls(task);
+      task = await readGeneration(api, id); status = taskStatus(task); urls = findUrls(task);
       if (terminal() && (!successful() || urls.length)) break;
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
@@ -425,7 +426,7 @@ async function describeTask(task: string, fast: boolean, cmd: Command) {
     finalizeOnly: resolved.finalizeOnly, source: resolved.source, endpoint: endpointFor(resolved.media),
     command: resolved.command || `wowidea ${generate} generate --task ${resolved.task} --prompt "..." --json --direct`,
     message: resolved.message,
-    entries: resolved.entries.map(entry => ({ alias: entry.alias, display: entry.display, quality: entry.quality, speed: entry.speed, fallback: entry.fallback, draft: Boolean(entry.draft), finalizeOnly: Boolean(entry.finalizeOnly) })),
+    entries: resolved.entries.map(entry => ({ alias: entry.alias, display: entry.display, requestModel: entry.requestModel, quality: entry.quality, speed: entry.speed, fallback: entry.fallback, draft: Boolean(entry.draft), finalizeOnly: Boolean(entry.finalizeOnly) })),
   };
 }
 models.option("--by-task <task>", "same as: models by-task <task>").option("--fast", "with --by-task, prefer the fast model");
@@ -447,7 +448,7 @@ batch.command("run").description("Run a JSON, CSV, or simple YAML manifest. Exam
       const response = await api.post(job.endpoint, payload, { "Idempotency-Key": job.idempotencyKey, "x-async": "true" });
       return { taskId: findTaskId(response), status: taskStatus(response), urls: findUrls(response) };
     },
-    async poll(taskId) { const task = await api.get(`/v1/tasks/${enc(taskId)}`); return { status: taskStatus(task), urls: findUrls(task) }; },
+    async poll(taskId) { const task = await readGeneration(api, taskId); return { status: taskStatus(task), urls: findUrls(task) }; },
     download: (urls, directory) => downloadUrls(urls, directory),
   };
   const result = await runBatch({ jobs, outDir: o.out, statePath: o.state, concurrency: Number(o.concurrency), perModel: Number(o.perModel), client, onProgress: event => { if (!globals(c).json && !globals(c).jsonl) process.stderr.write(`${event.id || ""} ${event.status || ""}\n`); } });

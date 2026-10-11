@@ -14,6 +14,7 @@ export interface ModelCard {
   nativeTransparency: boolean;
   draft?: boolean;
   finalizeOnly?: boolean;
+  requestModel?: string;
 }
 
 export interface TaskSpec {
@@ -93,13 +94,38 @@ export function isDraftModel(alias: string | undefined): boolean {
   return Boolean(modelCard(alias)?.draft) || /^seedance-2\.5-draft$/i.test(alias.trim());
 }
 
+const DRAFT_REQUEST_MODEL = "豆包Seedance-2.5";
+
+export function draftRequestModel(alias?: string): string {
+  return (alias && modelCard(alias)?.requestModel) || DRAFT_REQUEST_MODEL;
+}
+
 export function applyDraftContract(payload: Record<string, unknown>, selectedId?: string): Record<string, unknown> {
   const names = [selectedId, payload.model].map(value => String(value || ""));
   if (names.some(name => isFinalizeModel(name))) throw new CliError("Seedance 2.5 成片不能重新提交提示词。运行 wowidea video finalize <draftId> --yes", ExitCode.Usage);
-  if (!names.some(name => isDraftModel(name))) return payload;
-  const resolution = String(payload.resolution || "720p");
-  if (!["480p", "720p"].includes(resolution)) throw new CliError("Seedance 2.5 样片使用 480p 或 720p。成片请运行 wowidea video finalize <draftId> --yes", ExitCode.Usage);
-  return { ...payload, draft: true, resolution, watermark: payload.watermark ?? false };
+  const seedance25 = names.some(name => /豆包seedance-?2\.?5|doubao-seedance-2-5|seedance-?2\.?5(?![-_. ]?final)/i.test(name) && !isFinalizeModel(name));
+  if (!names.some(name => isDraftModel(name)) && !(payload.draft === true && seedance25)) return payload;
+  if (payload.resolution !== undefined && String(payload.resolution) !== "480p") throw new CliError("可成片的 Seedance 2.5 样片固定 480p。1080p 成片请运行 wowidea video finalize <draftId> --yes", ExitCode.Usage);
+  const duration = payload.duration === undefined || payload.duration === null || payload.duration === "" ? 4 : Number(payload.duration);
+  if (!Number.isFinite(duration) || duration < 4 || duration > 30) throw new CliError("Seedance 2.5 样片时长为 4–30 秒。", ExitCode.Usage);
+  const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
+  const images = Array.isArray(payload.image_urls) ? payload.image_urls.filter((url): url is string => typeof url === "string" && url.length > 0) : [];
+  const content: Record<string, unknown>[] = [];
+  if (prompt) content.push({ type: "text", text: prompt });
+  if (images[0]) content.push({ type: "image_url", role: "first_frame", image_url: { url: images[0] } });
+  if (images[1]) content.push({ type: "image_url", role: "last_frame", image_url: { url: images[1] } });
+  const requestModel = names.map(name => modelCard(name)?.requestModel).find(Boolean) || DRAFT_REQUEST_MODEL;
+  return {
+    ...payload,
+    model: requestModel,
+    draft: true,
+    resolution: "480p",
+    duration,
+    aspect_ratio: payload.aspect_ratio || "16:9",
+    audio: payload.audio ?? false,
+    watermark: false,
+    ...(content.length ? { content } : {}),
+  };
 }
 
 export function canFallback(error: unknown): boolean {

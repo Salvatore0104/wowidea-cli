@@ -23,6 +23,27 @@ describe("chroma key", () => {
     expect(alpha(24, 24)).toBeGreaterThan(200);
   });
 
+  it("keys the measured border green, including a soft contact shadow", async () => {
+    const width = 48, height = 48;
+    const raw = Buffer.alloc(width * height * 3);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const index = (y * width + x) * 3;
+      const subject = x > 18 && x < 30 && y > 18 && y < 30;
+      const shadow = !subject && x > 16 && x < 32 && y > 16 && y < 34;
+      raw[index] = subject ? 190 : shadow ? 18 : 0x17;
+      raw[index + 1] = subject ? 30 : shadow ? 160 : 0xee;
+      raw[index + 2] = subject ? 24 : shadow ? 18 : 0x17;
+    }
+    const png = await sharp(raw, { raw: { width, height, channels: 3 } }).png().toBuffer();
+    const keyed = await keyImage(png, { key: "auto" });
+    expect(keyed.key).toBe("#17EE17");
+    const pixels = await sharp(keyed.png).ensureAlpha().raw().toBuffer();
+    const alpha = (x: number, y: number) => pixels[(y * width + x) * 4 + 3];
+    expect(alpha(1, 1)).toBe(0);
+    expect(alpha(17, 33)).toBeLessThan(40);
+    expect(alpha(24, 24)).toBeGreaterThan(200);
+  });
+
   it("picks a key that the prompt does not mention and prefers native alpha", () => {
     expect(chooseKeyHex("a green leaf")).toBe("#0000FF");
     expect(layerPrompt("ceramic cup", "#00FF00")).toContain("flat uniform #00FF00 background");

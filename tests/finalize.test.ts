@@ -13,17 +13,25 @@ afterEach(async () => {
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true });
 });
 
-function fakeApi(state: { posts: Array<{ path: string; body: unknown }> }) {
-  const task = { status: "succeeded", model: "Seedance-2.5-Draft", videoGeneration: { resultId: "result-1", stage: "draft", model: "Seedance-2.5-Draft" } };
+function draftTask(stage = "draft") {
+  return {
+    task_id: "draft-1", status: "success", task_status: "succeeded", task_type: "generation",
+    data: [{
+      type: "video", url: "https://example.test/draft.mp4", duration: 4,
+      videoGeneration: { resultId: "draft-1:0", stage, model: "doubao-seedance-2-5-260628", resolution: "480p", finalResolutions: ["1080p"], duration: 4, finalizeExpiresAt: Date.now() + 7 * 86400000 },
+    }],
+  };
+}
+
+function fakeApi(state: { posts: Array<{ path: string; body: any }> }, extra: Record<string, unknown> = {}) {
   return {
     async get(path: string) {
-      if (path.includes("/v1/tasks/")) return task;
-      if (path.includes("/finalization")) return { eligible: true, targetResolutions: ["1440p"] };
+      if (path.includes("/v1/ai/result/")) return draftTask();
+      if (path.includes("/finalization")) return { sourceResultId: "draft-1:0", eligible: true, targetResolutions: ["1080p"], expiresAt: Date.now() + 7 * 86400000, duration: 4, ...extra };
       throw new Error(path);
     },
     async post(path: string, body: unknown) {
       state.posts.push({ path, body });
-      if (path.includes("estimatedBilling")) return { amount: 42 };
       if (path.includes("/video/finalizations")) return { task_id: "final-1" };
       throw new Error(path);
     },
@@ -31,27 +39,36 @@ function fakeApi(state: { posts: Array<{ path: string; body: unknown }> }) {
 }
 
 describe("video finalize", () => {
-  it("shows the cost before --yes and never finalizes the same draft twice", async () => {
+  it("labels the 1080p estimate and finalizes a draft result once", async () => {
     const dir = await mkdtemp(join(tmpdir(), "wowidea-final-")); dirs.push(dir);
     process.env.EASYAI_CONFIG_DIR = dir;
-    const state = { posts: [] as Array<{ path: string; body: unknown }> };
+    const state = { posts: [] as Array<{ path: string; body: any }> };
     const preview = await finalizeDraft(fakeApi(state), { draftId: "draft-1" });
-    expect(preview).toMatchObject({ submitted: false, deduped: false, estimatedPoints: 42, sourceResultId: "result-1", requiredFlag: "--yes" });
-    expect(state.posts.map(post => post.path)).toEqual(["/v1/integration-platform/models/estimatedBilling"]);
+    expect(preview).toMatchObject({ submitted: false, deduped: false, estimatedPoints: 149.68, estimate: true, sourceResultId: "draft-1:0", targetResolution: "1080p" });
+    expect(preview).toHaveProperty("estimateLabel");
+    expect(String((preview as { estimateLabel?: string }).estimateLabel)).toMatch(/估算/);
+    expect(state.posts).toEqual([]);
     const paid = await finalizeDraft(fakeApi(state), { draftId: "draft-1", yes: true });
-    expect(paid).toMatchObject({ submitted: true, taskId: "final-1", deduped: false });
-    expect(state.posts.at(-1)?.path).toBe("/v1/video/finalizations");
+    expect(paid).toMatchObject({ submitted: true, taskId: "final-1", deduped: false, targetResolution: "1080p" });
+    expect(state.posts).toHaveLength(1);
+    expect(state.posts[0]!.path).toBe("/v1/video/finalizations");
+    expect(state.posts[0]!.body).toMatchObject({ sourceResultId: "draft-1:0", targetResolution: "1080p", outputFormat: "mp4", watermark: false, returnLastFrame: false });
+    expect(state.posts[0]!.body.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/i);
     const again = await finalizeDraft(fakeApi(state), { draftId: "draft-1", yes: true });
     expect(again).toMatchObject({ deduped: true, taskId: "final-1", submitted: false });
-    expect(state.posts.filter(post => String(post.path).includes("/video/finalizations"))).toHaveLength(1);
+    expect(state.posts).toHaveLength(1);
   });
 
-  it("rejects a draft that did not succeed or is the wrong model", async () => {
+  it("reuses existingTaskId and refuses a direct render", async () => {
     const dir = await mkdtemp(join(tmpdir(), "wowidea-final-")); dirs.push(dir);
     process.env.EASYAI_CONFIG_DIR = dir;
-    const api = { async get() { return { status: "queued", model: "Seedance-2.5-Draft" }; }, async post() { throw new Error("no post"); } } as unknown as EasyAiApi;
-    await expect(finalizeDraft(api, { draftId: "draft-1", yes: true })).rejects.toThrow(/succeeds/);
-    const wrong = { async get() { return { status: "succeeded", model: "Wan3.0-Video" }; }, async post() { throw new Error("no post"); } } as unknown as EasyAiApi;
-    await expect(finalizeDraft(wrong, { draftId: "draft-1", yes: true })).rejects.toThrow(/not a Seedance 2.5 draft/);
+    const state = { posts: [] as Array<{ path: string; body: any }> };
+    const existing = await finalizeDraft(fakeApi(state, { existingTaskId: "already-final" }), { draftId: "draft-1", yes: true });
+    expect(existing).toMatchObject({ deduped: true, taskId: "already-final", submitted: false });
+    expect(state.posts).toEqual([]);
+    const direct = { async get() { return draftTask("direct"); }, async post() { throw new Error("no post"); } } as unknown as EasyAiApi;
+    await expect(finalizeDraft(direct, { draftId: "draft-1", yes: true })).rejects.toThrow(/样片/);
+    const queued = { async get() { return { status: "process", task_status: "running", message: "TaskId:draft-1 is processing" }; }, async post() { throw new Error("no post"); } } as unknown as EasyAiApi;
+    await expect(finalizeDraft(queued, { draftId: "draft-1", yes: true })).rejects.toThrow(/succeeds/);
   });
 });
