@@ -1,118 +1,223 @@
 # Wowidea CLI
 
-在 [wowidea.top](https://wowidea.top) 上生成图片、样片视频、透明图层和批量任务。`wowidea` 与 `easyai` 是同一入口，`easyai-canvas` 是完整画布控制。接口基址 `https://wowidea.top/api/v1`。密钥用环境变量 `WOWIDEA_API_KEY`。
+`wowidea`（同一程序的另一个名字是 `easyai`）是 [wowidea.top](https://wowidea.top) / EasyAI 的命令行：出图、视频样片与成片、绿幕抠图和透明图层、批量任务。人和任何助手都能用。助手没有画图能力时调用本 CLI，或连接文末的 MCP；不要拒绝，也不要改画 SVG。当前版本 0.8.0。接口基址是 `https://wowidea.top/api/v1`。
 
-任何助手先读 [AGENTS.md](AGENTS.md)，再运行一条命令：
-
-```text
-wowidea capabilities --json
-```
-
-## 日常使用
-
-```text
-wowidea models by-task direction --json
-wowidea image generate --task typography --prompt "海报标题：夏日陶瓷" --json --direct
-wowidea video generate --task video --prompt "镜头缓慢靠近陶瓷杯" --duration 5 --json --direct
-wowidea video finalize <draftId>
-wowidea video finalize <draftId> --yes
-wowidea layers --layer cup --from ./green.png --out ./layers --json
-wowidea key ./subject.png --out ./cutout.png --json
-wowidea batch run --manifest jobs.json --concurrency 6 --json
-```
-
-先看 `wowidea capabilities --brief`。视频样片的显示名是 Seedance 2.5 样片，实际请求只有 `豆包Seedance-2.5`、`content`、`draft: true`、`480p`、时长、画幅和 `audio`。别名 `Seedance-2.5-Draft` 不能生成可成片的样片。成片固定 1080p：第一次 `video finalize` 打印估算价并以退出码 2 停下；已经成片过再预览是退出码 0。`--yes` 才扣费，重复执行会下载已有成片。结果轮询 `GET /v1/ai/result/{id}`。视频地址 24 小时内失效，会立刻下载。
-
-没有内置画图的助手应调用本 CLI，或连接已有 MCP，不要拒绝，也不要改画 SVG：
-
-```json
-{ "mcpServers": { "wowidea": { "url": "https://wowidea.top/api/mcp", "headers": { "Authorization": "Bearer sk-YOUR_KEY" } } } }
-```
-
-## 任务路由
-
-表在 `data/model-routing.json`，可用 `wowidea models by-task <task> --json` 查看。
-
-| 任务 | 默认模型 |
-| --- | --- |
-| direction 方向 / moodboard | mj-v8.2（`--fast` 用 mj-v8.2-fast） |
-| retouch 修图 | Nano Banana 2 |
-| retouch-precise 精修 | Nano Banana Pro |
-| typography 海报文字 | gpt-image-2.5 |
-| layering 分层 | Doubao-Seedream-5.0-flash，高质量用 layering-hq |
-| video 样片 | 显示名 Seedance 2.5 样片；请求 `豆包Seedance-2.5` + draft + 480p |
-| video-final 成片 | 仅 `video finalize`，模型 Seedance-2.5-Final |
-| 3d / music / tts | Trip3D、Suno V6、MiniMax Speech 2.8 |
-
-画布仍是默认创作面；`--direct` 走 REST。旧的分镜审批命令还在，但不再拦住生成。
-
-## English
-
-Set `WOWIDEA_API_KEY`. Run `wowidea capabilities --brief`, then `wowidea image|video generate --task <task> --prompt "..." --json --direct`. Read `data.taskId`, `data.paths`, and `data.model`. A new finalize preview exits 2. A dedupe hit exits 0. Pay only with `wowidea video finalize <draftId> --yes`.
-
-生成前先运行一次 `wowidea project setup --dir <项目目录> --name <画布名称>`，创建并绑定同名远端画布。以后生成会创建新的非破坏式节点链、自动保存请求标识、等待并下载；网站负责平台冗余。直接参数与 `--file` 二选一。只有明确需要旧接口时才添加 `--direct`。完整画布操作使用 `easyai-canvas`。
+助手先读仓库根目录的 [AGENTS.md](AGENTS.md) 和 [skills/wowidea/SKILL.md](skills/wowidea/SKILL.md)。安装细节在 [docs/install.md](docs/install.md)。
 
 ## 安装
 
-### 方式一：让 Codex 代你安装
+需要 Node.js 20.3 或更新（`package.json` 的 `engines` 是 `>=20`；依赖 `sharp@0.34` 要求 `^20.3 || >=21`）、npm、Git。全局目录必须当前用户可写，不要为了安装使用 `sudo`。
 
-先在网站获取账号 Key：登录 [wowidea.top](https://wowidea.top) → 用户中心 → **API Key**（[wowidea.top/user/api-key](https://wowidea.top/user/api-key)）→ 新建并复制。
+macOS（Apple 芯片与 Intel）、Linux（glibc 与 musl，x64 / arm64 等）和 Windows（x64 / arm64）都使用 sharp 的预编译包 `@img/sharp-*`，不需要本机编译 libvips。预编译包下不来时才会走编译，见[故障排查](#故障排查)。
 
-将下面的 `sk-你的Key` 替换为刚复制的 Key，再把整段发给 Codex：
-
-> 帮我安装 https://github.com/Salvatore0104/wowidea-cli 的 CLI 和随包 Skill。我的账号 API Key 是 sk-你的Key，请通过标准输入配置到 wowidea，并运行 doctor 验证模型、余额和任务查询。无限画布另需 Canvas OAuth：先检查本机是否已有有效会话；如果没有，请引导我完成一次浏览器 OAuth 授权（无法使用浏览器时可选择设备授权，或在我提供账号密码后用 --password-stdin 登录）。验证 easyai-canvas auth status 后，告诉我如何初始化项目并持续使用。不要在项目或日志中保存凭据，也不要替我打开网页操作画布。
-
-Codex 会构建并安装 CLI 与随包 Skill，接收你在聊天中提供的 Key，通过 `auth use-key --key-stdin` 保存到系统凭据库，随后运行 `doctor` 验证普通只读接口。Canvas OAuth 独立于 API Key：首次在本机使用时完成一次授权并用 `easyai-canvas auth status` 在线验证；已有有效会话就直接复用。后续调用自动使用已保存的 Key 和 Canvas 会话；换 Key 或账号时再明确更新。
-
-### 方式二：自己运行安装脚本
-
-需要 Node.js 20+、npm 和 Git。安装器从源码构建 npm 实包，同时安装 CLI 与随包 Skill；重复执行即为更新，会保留系统凭据和你自定义的 Skill。
-
-macOS：
+可靠安装：
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install-macos.sh)"
+git clone https://github.com/Salvatore0104/wowidea-cli && cd wowidea-cli && npm ci && npm run build && npm link
 ```
 
-Windows PowerShell：
+`dist/` 不在 Git 里，也没有 `prepare`。`npm install -g github:Salvatore0104/wowidea-cli` 不会生成 `dist/cli.js`，装完没有可执行的 `wowidea`。补上 `prepare` 也没用：npm 跑构建时 `tsup` 还不在 PATH 上。不要用这条命令。
+
+`npm link` 若因全局目录无写权限失败，改用用户目录（已用打包产物验证）：
+
+```bash
+npm pack
+npm install -g ./easyai-cli-0.8.0.tgz --prefix "$HOME/.local"
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+升级：在克隆目录里 `git pull && npm ci && npm run build && npm link`。卸载：`npm uninstall -g @easyai/cli`。卸载不删除 `~/.config/easyai`，也不删除系统钥匙串里的密钥。
+
+## API Key
+
+在 [wowidea.top](https://wowidea.top) 打开 API Key 页 [wowidea.top/user/api-key](https://wowidea.top/user/api-key)，新建并复制。不要把密钥贴进聊天、仓库、技能文件或日志。
+
+bash / zsh（当前终端；要持久就写进 `~/.bashrc` 或 `~/.zshrc`）：
+
+```bash
+export WOWIDEA_API_KEY="sk-..."
+wowidea balance
+```
+
+Windows PowerShell。`$env:` 只影响当前窗口；`setx` 写入用户环境，新开的窗口才看得到：
 
 ```powershell
-irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install-windows.ps1 | iex
+$env:WOWIDEA_API_KEY = "sk-..."
+setx WOWIDEA_API_KEY "sk-..."
+wowidea balance
 ```
 
-普通模型目录和估价使用账号 API Key；无限画布另用 scoped OAuth，会话令牌只存系统凭据库：
+也接受 `EASYAI_API_KEY`。环境变量优先于钥匙串。可选钥匙串依赖 `keytar`：本机有它时，用隐藏输入保存，不要把密钥写在命令参数里。
 
-```text
+```bash
 wowidea auth use-key --prompt
-wowidea --json auth status
-easyai-canvas auth login --base-url https://wowidea.top/api --method password --account <账号> --password-stdin
+printf '%s' "$WOWIDEA_API_KEY" | wowidea auth use-key --key-stdin
+wowidea balance
 ```
 
-手动安装、密钥与安全规则、服务地址、安装内容、更新、卸载、开发验证和退出码见 **[安装与维护](docs/install.md)**。
+没有钥匙串时 CLI 会要求设置 `WOWIDEA_API_KEY`。未配置密钥时 `wowidea balance` 退出码为 3。
 
-## 在 Codex 项目中持续调用
+## 接入助手
 
-第一次在新项目中使用时，把下面这段发给 Codex：
+MCP 与 CLI 用同一把密钥。本地抠图、图层、批量、成片下载和退出码走 CLI。助手只有 MCP、没有 shell 时连下面的地址。两条路都可以出图，不要画 SVG。
 
-> 请将当前文件夹初始化为 Wowidea 创作项目并绑定同名无限画布。先检查本机 Canvas 登录：如果尚未登录，请完成一次 Canvas OAuth 登录并将会话保存到系统凭据库；如果已有有效会话，直接复用，不要重复登录。以后本项目的图片、视频生成、修改和任务提交默认使用 Wowidea，无需我重复调用 /wowidea；内容默认在该画布创建节点链，结果保留在画布并下载。根据用途、模型实时能力和网站估价选择合适方案，兼顾质量、费用与效率；用途或测试、成片阶段不明确且会影响选择时先简短询问，我明确指定的模型和规格优先。不要为了正式成片自动增加付费测试。交付时在 Codex 右侧打开画布并给出完整地址，不弹出外部网页。只有我明确指定 --direct 时才走旧接口。Seedance 继续遵守本项目的分镜审批和 watermark:false 门禁。每轮一个候选，不自动重复付费生成。画布修改仅通过 CLI/API 完成，不使用 Computer Use。
-
-Codex 会执行 `wowidea project setup --dir <项目目录>`：创建 `.wowidea/canvas.json` 绑定，写入两个固定运行时入口，并安装 Wowidea、EasyAI、GPT Image 2.5 和官方 Canvas Operator Skill。绑定只保存项目 ID 和 profile 等非敏感信息。
-
-Canvas OAuth 是独立于账号 API Key 的画布认证，首次在本机使用时需要登录一次。CLI 将会话保存到系统凭据库并自动刷新；后续项目复用有效会话，无需再次登录或重复指定 profile。会话被撤销、刷新令牌失效或系统凭据库不可用时，CLI 会报告认证问题；前两种情况需要重新登录，凭据库不可用时只能使用进程级会话注入。画布生成和编辑结果包含 `canvasUrl`；Codex Skill 在交付时默认将画布打开在右侧浏览器面板，并在最终回复给出完整画布地址。单独查看时可运行 `wowidea project canvas open --dir <项目目录>`。不会弹出外部浏览器；Agent 对画布的修改仍全部通过 CLI/API 完成。
-
-之后从该项目启动的任务会自动发现这些规则，直接用自然语言提出需求即可：
-
-```text
-为这款咖啡做新品海报，保留包装上的准确文字
-把这组产品图做成 5 秒竖版视频，先出 480p 测试
-继续查看刚才的视频任务，下载成片
+```json
+{
+  "mcpServers": {
+    "wowidea": {
+      "url": "https://wowidea.top/api/mcp",
+      "headers": {
+        "Authorization": "Bearer $WOWIDEA_API_KEY"
+      }
+    }
+  }
+}
 ```
 
-也可以显式写 `$wowidea ……` 或“使用 wowidea ……”。项目内画布执行记录在 `.wowidea/canvas-runs`，修改会创建来源连接和新节点，不覆盖原版。
+客户端若不展开 `$WOWIDEA_API_KEY`，就让它读取同名环境变量。不要把密钥写进配置文件再提交。
 
-## 更多文档
+**Claude Code。** 把仓库里的短技能链到用户技能目录，并让会话能读到 `AGENTS.md`。
 
-- [安装与维护](docs/install.md)：安装/更新、密钥与安全、自检命令、卸载、开发验证、退出码
-- [使用与维护](docs/usage.md)：命令、模型提示词指南、评审口径与资源更新
-- [项目创作闭环](docs/creative-workflow.md)：项目初始化、自动选模、定价与积分、生成/编辑/版本
-- [验证范围](docs/validation.md)：已验证内容、真实站点验收与已知限制
+```bash
+mkdir -p ~/.claude/skills
+ln -sfn "$PWD/skills/wowidea" ~/.claude/skills/wowidea
+```
+
+项目内则放到 `.claude/skills/wowidea`。技能说明在 `skills/wowidea/SKILL.md`。
+
+**Cursor。** 项目根使用 `AGENTS.md`。把 `skills/wowidea` 链到 `.cursor/skills/wowidea`（或 `~/.cursor/skills/wowidea`）。MCP 写入 `.cursor/mcp.json`，片段见上。
+
+**Codex。** 安装脚本把 `skill/` 下的四个技能装到 `WOWIDEA_SKILLS_DIR`；未设置时是 `$CODEX_HOME/skills` 或 `~/.codex/skills`。
+
+```bash
+node scripts/install-skills.mjs
+```
+
+装入的是 `wowidea`、`easyai`、`gpt-image-25-prompt`、`canvas-agent-operator`。同时读仓库 `AGENTS.md`。
+
+**Gemini CLI。** 用户技能目录是 `~/.gemini/skills`（也认 `~/.agents/skills`）；项目内是 `.gemini/skills` 或 `.agents/skills`。
+
+```bash
+mkdir -p ~/.gemini/skills
+ln -sfn "$PWD/skills/wowidea" ~/.gemini/skills/wowidea
+```
+
+工作区技能需要把目录标为 trusted。把 `AGENTS.md` 放在项目里，或把其中的命令写进 `GEMINI.md`。
+
+**OpenCode。** 读项目 `AGENTS.md`。技能可放 `.opencode/skills/wowidea`，也会扫描 `.agents/skills` 和 `.claude/skills`。
+
+```bash
+mkdir -p .opencode/skills
+ln -sfn "$PWD/skills/wowidea" .opencode/skills/wowidea
+```
+
+**普通 shell。** 装好 CLI，设置 `WOWIDEA_API_KEY`，运行 `wowidea capabilities --brief`。不需要技能目录。
+
+`wowidea project setup --dir .` 会把 `skill/` 复制到项目的 `.agents/skills/`，并在 `AGENTS.md` 写入一段标记。画布登录是另一套 OAuth，和 API Key 分开。
+
+## 快速开始
+
+`capabilities --brief` 不需要密钥。下面的生成命令需要密钥，并走 `--direct`（REST）。不写 `--direct` 时会尝试画布。
+
+```bash
+wowidea capabilities --brief
+wowidea models by-task direction --json
+wowidea image generate --task typography --prompt "海报标题：夏日陶瓷" --json --direct
+wowidea key ./subject.png --out ./cutout.png --shadow neutral --json
+wowidea layers --layer cup --from ./green.png --out ./layers --json
+wowidea batch run --manifest jobs.json --concurrency 6 --json
+wowidea video generate --task video --prompt "镜头缓慢靠近陶瓷杯" --duration 5 --json --direct
+wowidea video finalize <draftId>
+wowidea video finalize <draftId> --yes
+```
+
+抠图 `--shadow`：`keep` 保留原像素（不去色溢），`remove` 去掉阴影，`neutral` 是默认的灰色半透明阴影。
+
+批量清单可以是 JSON、CSV 或简单 YAML。成片任务不会被提交。
+
+```json
+{
+  "jobs": [
+    { "id": "poster", "task": "typography", "prompt": "海报标题：夏日陶瓷" },
+    { "id": "draft", "task": "video", "prompt": "镜头缓慢靠近陶瓷杯" }
+  ]
+}
+```
+
+视频样片的显示名是 Seedance 2.5 样片。请求模型是 `豆包Seedance-2.5`，并带 `draft: true` 和 `480p`。`Seedance-2.5-Draft` 只是别名，不能当作 `model` 发送。成片固定 1080p，只能用 `video finalize`。
+
+`video finalize <draftId>` 只打印估算价并以退出码 2 停下，不扣费。估算按 1080p 直接生成价 149.68 积分 / 4 秒折算，不是成片实时报价。确认后再加 `--yes`，只扣一次费。已经成片过再预览是退出码 0，不扣费，`urls` 有地址、`paths` 为 null。对已成片的 id 再执行 `--yes` 会下载已有文件。样片约 7 天后不能成片（接口字段 `expiresAt` / `finalizeExpiresAt`）。
+
+## 模型路由
+
+表在 `data/model-routing.json`。CLI 从安装目录的 `data/` 直接读取，改完下一条命令生效，不用重新构建。`wowidea models by-task <task> --json` 的 `data.model` 是实际请求模型，`data.chain` 第一项是主模型，后面是回退。`--fast` 会在链上改选 `speed` 为 `fast` 的模型。
+
+| 任务 | 主模型（请求） | 回退 |
+| --- | --- | --- |
+| direction | mj-v8.2 | mj-v8.2-fast、Nano Banana 2 |
+| retouch | Nano Banana 2 | Nano Banana 2 Lite、Nano Banana Pro |
+| retouch-precise | Nano Banana Pro | Nano Banana 2 |
+| typography | gpt-image-2.5 | gpt-image-2.5-flare、gpt-image-2.5-sunburst、GPT Image 2 |
+| layering | Doubao-Seedream-5.0-flash | Seedream-5.0-Pro、Nano Banana 2 |
+| layering-hq | Seedream-5.0-Pro | Doubao-Seedream-5.0-flash、Nano Banana 2 |
+| video | `豆包Seedance-2.5`（别名 Seedance-2.5-Draft，`draft:true`，480p） | 豆包Seedance-2.0-fast、豆包Seedance-2.0、豆包Seedance-2.0-mini、Wan3.0-Video、MiniMax-H3、Google Omni |
+| video-final | Seedance-2.5-Final | 无。只走 `video finalize`，不要放进 batch |
+| 3d | Trip3D-v3.1 | Trip3D-P1 |
+| music | Suno-V6 | Suno-V6-WILD、Suno-V6-MINI |
+| tts | MiniMax-Speech-2.8-HD | MiniMax-Speech-2.8-Turbo |
+
+改法：编辑 `tasks.<任务>.models` 的第一项（主模型）和 `models.<别名>.fallback`。中文别名在 `aliases`。视频样片的 `requestModel` 保持 `豆包Seedance-2.5`，不要把 `Seedance-2.5-Draft` 写成请求模型。`video-final` 保持 `finalizeOnly`，`fallback` 留空。
+
+## JSON 与退出码
+
+`--json` 的形状是 `{ "schemaVersion": "easyai.cli/v1", "data": { ... } }`。生成和成片读这些字段：
+
+| 字段 | 含义 |
+| --- | --- |
+| `data.taskId` | 任务 id。响应里也可能另有 `task_id` |
+| `data.model` | `{ alias, upstream, request }`。样片的 `request` 是 `豆包Seedance-2.5` |
+| `data.paths` | 已下载的本地文件。还没下载时为 null |
+| `data.urls` | 远端地址。视频地址约 24 小时失效 |
+
+错误写到 stderr，形如 `{"error":"...","code":3}`，进程退出码与 `code` 相同。`capabilities --brief` 里的退出码：
+
+| 码 | 含义 |
+| --- | --- |
+| 0 | 成功，包括已经成片过的预览（不扣费） |
+| 2 | 用法错误，包括尚未提交的成片估价 |
+| 3 | 认证失败 |
+| 4 | 冲突（幂等键或版本） |
+| 5 | 服务错误或结果不确定 |
+| 6 | 需要确认或批准 |
+| 7 | 预算 |
+
+## 故障排查
+
+**401 / 退出码 3。** 密钥缺失、过期或写错。确认 `WOWIDEA_API_KEY` 已进入当前进程，再跑 `wowidea balance`。
+
+**基址。** 默认 `--base-url` 是 `https://wowidea.top`。CLI 会接上 `/api`，再请求 `/v1/...`，所以完整路径是 `/api/v1`，不是 `/v1`。不要把 `--base-url` 设成 `https://wowidea.top/v1` 或 `https://wowidea.top/api/v1`。旧主机 `ai.wowidea.top` 会 301，跨站跳转会丢掉 `Authorization`；CLI 把这个主机改写成 `https://wowidea.top`。
+
+**签名 URL 24 小时。** 视频和上传结果的地址约 24 小时后失效。CLI 会立刻下载到 `data.paths`。若只剩下 `data.urls`，在过期前用 `wowidea video download <taskId>` 或 `wowidea image download <taskId>` 再下一次。
+
+**成片窗口 7 天。** 样片成功后大约 7 天内可以成片，以接口的 `expiresAt` / `finalizeExpiresAt` 为准。过期后提示「样片已过期，请重新生成样片。」，退出码 2。
+
+**Windows 上的 sharp。** 使用 `@img/sharp-win32-x64` 或 `@img/sharp-win32-arm64` 预编译包。不要加 `--omit=optional`。若安装日志里没有对应的 `@img/sharp-win32-*`，检查代理和 registry，然后在克隆目录重新 `npm ci`。
+
+**代理。** CLI 用 Node 的 `fetch`，默认不读 `HTTP_PROXY` / `HTTPS_PROXY`。Node.js 22.13 及以上可设 `NODE_USE_ENV_PROXY=1`。npm 安装 sharp 时另设 npm 代理。
+
+```bash
+export HTTPS_PROXY=http://127.0.0.1:7890
+export NODE_USE_ENV_PROXY=1
+npm config set https-proxy http://127.0.0.1:7890
+```
+
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+$env:NODE_USE_ENV_PROXY = "1"
+```
+
+## English
+
+Wowidea CLI 0.8.0 generates images, Seedance drafts, one paid final, chroma-key cutouts, and batch jobs on wowidea.top. Install with `git clone https://github.com/Salvatore0104/wowidea-cli && cd wowidea-cli && npm ci && npm run build && npm link` on Node.js 20.3+. Set `WOWIDEA_API_KEY` and check `wowidea balance`. Do not paste the key into chat. Do not use `npm install -g github:Salvatore0104/wowidea-cli`.
+
+Run `wowidea capabilities --brief`, then `wowidea image|video generate --task <task> --prompt "..." --json --direct`. Read `data.taskId`, `data.paths`, `data.urls`, and `data.model` (`alias`, `upstream`, `request`). A draft request is model `豆包Seedance-2.5` with `draft: true` and `480p`. `Seedance-2.5-Draft` is an alias only. `wowidea video finalize <draftId>` prints an estimate and exits 2. Add `--yes` to pay once. MCP: `https://wowidea.top/api/mcp` with `Authorization: Bearer $WOWIDEA_API_KEY`. Exit codes: 0 ok, 2 usage, 3 auth, 4 conflict, 5 service, 6 approval, 7 budget.
