@@ -2,6 +2,19 @@
 
 主入口与日常用法见 [README](../README.md)；命令、模型与评审口径见 [使用与维护](usage.md)。
 
+## 给任意助手
+
+密钥放在 `WOWIDEA_API_KEY`（也接受 `EASYAI_API_KEY`）。不要把密钥写进仓库、日志或技能文件。
+
+| 助手 | 技能位置 |
+| --- | --- |
+| Claude Code | `~/.claude/skills/wowidea` |
+| Cursor | 项目 `skills/wowidea` 或 `.cursor/rules`，先读 `AGENTS.md` |
+| Codex | `~/.codex/skills/wowidea`（`scripts/install-skills.mjs`） |
+| 其他 | 直接运行 CLI，或连接 MCP `https://wowidea.top/api/mcp` |
+
+先运行 `wowidea capabilities --json`。它离线返回任务、命令和参数，不需要密钥。
+
 ## 让 Codex 代你安装（推荐）
 
 先取得账号 Key：登录 [wowidea.top](https://wowidea.top) → 用户中心 → **API Key**（[wowidea.top/user/api-key](https://wowidea.top/user/api-key)）→ 新建并复制。

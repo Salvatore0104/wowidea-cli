@@ -9,6 +9,7 @@ export function autoRoute(catalog: unknown, input: RoutingInput, prices: PriceBo
   if (!['image','video'].includes(input.kind)) throw new CliError('kind must be image or video.', ExitCode.Usage);
   if (input.stage && !['preview','final','edit','refine'].includes(input.stage)) throw new CliError('Unknown creative stage.', ExitCode.Usage);
   if ((!input.stage || !input.purpose) && !input.model) return { needsInput: true, question: '请说明用途，以及是在测试方向、修改还是正式交付。', candidates: [] };
+  if (input.kind === 'video' && input.stage === 'final' && !input.model) return { needsInput: false, finalizeOnly: true, model: 'Seedance-2.5-Final', candidates: [], stage: 'final', purpose: input.purpose, reason: '成片请使用 wowidea video finalize <draftId> --yes，不会重新发送提示词。' };
   const p = normalizeRequest(input.payload || {}, input.kind), purpose = input.purpose || 'explicit request';
   const names = input.model ? [input.model] : input.kind === 'image'
     ? /text|layout|文字|排版|复杂/.test(purpose) ? ['GPT Image 2.5','Nano Banana 2']
@@ -16,8 +17,8 @@ export function autoRoute(catalog: unknown, input: RoutingInput, prices: PriceBo
     : /style|风格|氛围|构图/.test(purpose) && input.stage !== 'edit' ? [input.speed ? 'mj-v8.2-fast' : 'mj-v8.2','Nano Banana 2']
     : ['Nano Banana 2','GPT Image 2.5']
     : /h3|minimax/i.test(purpose) ? ['MiniMax-H3','MiniMax-H3-Max']
-    : input.stage === 'preview' ? ['豆包Seedance-2.0-mini','豆包Seedance-2.0-fast','豆包Seedance-2.0','豆包Seedance-2.5']
-    : ['豆包Seedance-2.0','豆包Seedance-2.5','MiniMax-H3'];
+    : input.stage === 'preview' ? ['Seedance-2.5-Draft','豆包Seedance-2.0-fast','豆包Seedance-2.0-mini','豆包Seedance-2.0','豆包Seedance-2.5']
+    : ['Seedance-2.5-Draft','豆包Seedance-2.0','豆包Seedance-2.5','MiniMax-H3','Wan3.0-Video','Google Omni'];
   const candidates: any[] = [], rejected: any[] = [];
   for (const [rank,name] of names.entries()) {
     try {
@@ -41,13 +42,14 @@ export function autoRoute(catalog: unknown, input: RoutingInput, prices: PriceBo
   }
   // Fit comes before cost. Mini/Fast are alternatives for the same preview job.
   if (!input.model && input.kind === 'video' && input.stage === 'preview') candidates.sort((a,b) => {
+    if (a.rank === 0 || b.rank === 0) return a.rank - b.rank;
     const aPreview = a.rank < 2, bPreview = b.rank < 2;
     if (aPreview !== bPreview) return aPreview ? -1 : 1;
     if (aPreview && bPreview && a.pricing.estimatedPoints !== null && b.pricing.estimatedPoints !== null) return a.pricing.estimatedPoints - b.pricing.estimatedPoints || a.rank - b.rank;
     return a.rank - b.rank;
   });
   if (!candidates.length) throw new CliError('No model satisfies the requested settings; no substitution submitted.', ExitCode.Usage, rejected);
-  return { needsInput: false, ...candidates[0], candidates, rejected, stage: input.stage, purpose };
+  return { needsInput: false, ...candidates[0], candidates, rejected, stage: input.stage, purpose, preferPrimary: candidates.some(candidate => candidate.rank === 0) };
 }
 
 /**
@@ -65,7 +67,7 @@ export async function applyPlatformEstimates(api: EasyAiApi, routing: any): Prom
     candidate.pricing = { ...candidate.pricing, estimatedPoints: live.estimatedPoints, rawEstimatedPoints: live.raw, reason: live.reason, source: live.source, discount: live.discount };
   }
   // Keep the purpose-fit order, but refresh the reported choice's pricing.
-  if (routing.stage !== 'preview') return { ...routing, ...candidates[0], candidates };
+  if (routing.stage !== 'preview' || routing.preferPrimary) return { ...routing, ...candidates[0], candidates };
   const ranked = [...candidates].sort((a, b) => {
     const av = a.pricing?.estimatedPoints, bv = b.pricing?.estimatedPoints;
     const known = typeof av === 'number', other = typeof bv === 'number';

@@ -15,6 +15,7 @@ import { payloadHash } from "./preflight.js";
 import { writeJson } from "./storage.js";
 import { prepareVideoPayload } from "./video-payload.js";
 import { usageResult } from "./usage.js";
+import { applyDraftContract, isFinalizeModel } from "./task-router.js";
 
 type MediaKind = "image" | "video";
 type Json = Record<string, any>;
@@ -171,7 +172,8 @@ export async function generateOnCanvas(input: { api: EasyAiApi; kind: MediaKind;
   let payload = normalizeRequest({ ...input.payload }, input.kind);
   const selected = routeModel(catalog, input.kind, payload.model ? String(payload.model) : (await creativeDefaults())[input.kind]);
   payload.model = selected.model;
-  if (input.kind === "video") { payload.mode ??= payload.video_urls?.length ? "video_edit" : payload.image_urls?.length ? "image_reference" : payload.audio_urls?.length ? "audio_reference" : "text_to_video"; payload.watermark = false; payload = prepareVideoPayload(payload); }
+  if (isFinalizeModel(selected.id) || isFinalizeModel(String(input.payload.model || ""))) throw new CliError("Seedance 2.5 成片不能重新提交提示词。运行 wowidea video finalize <draftId> --yes", ExitCode.Usage);
+  if (input.kind === "video") { payload.mode ??= payload.video_urls?.length ? "video_edit" : payload.image_urls?.length ? "image_reference" : payload.audio_urls?.length ? "audio_reference" : "text_to_video"; payload.watermark = false; payload = applyDraftContract(payload, selected.id); payload = prepareVideoPayload(payload); }
   validateCapabilities(selected, payload);
   if (input.action === "edit" && input.kind === "image" && !(payload.image_urls?.length || payload.image?.length)) throw new CliError("Image editing requires at least one source image.", ExitCode.Usage);
   if (input.action === "edit" && input.kind === "video" && !payload.video_urls?.length) throw new CliError("Video editing requires at least one source video.", ExitCode.Usage);

@@ -55,12 +55,34 @@ describe("CLI gates with a mock website", () => {
       } else expect(result.err).not.toContain("200");
     } finally { await new Promise<void>(r => server.close(() => r())); }
   });
-  it("requires an approved manifest for Seedance before contacting the website", async () => {
-    for (const kind of ["video", "image"]) {
-      const args = [kind, "generate", "--data", JSON.stringify({ model: "doubao-seedance-2-5-260628" }), "--idempotency-key", "key"];
-      const result = await run(args, { EASYAI_BASE_URL: "http://127.0.0.1:1", EASYAI_API_KEY: "test" });
-      expect(result.code).toBe(6); expect(result.err).toContain("manifest");
-    }
+  it("submits a Seedance 2.5 draft without a manifest and marks draft:true", async () => {
+    let posted: Record<string, unknown> | undefined;
+    const server = createServer((req, res) => {
+      res.setHeader("Content-Type", "application/json");
+      if (req.url === "/api/v1/models") { res.end(JSON.stringify({ data: [{ id: "Seedance-2.5-Draft", capabilities: { omni_video: { supported_modes: ["text_to_video"], duration_range: [4, 15], output_resolutions: ["480p", "720p"], aspect_ratio_allowed: ["16:9"], output_audio: true } } }] })); return; }
+      if (req.url === "/api/integration-platform/models/estimatedBilling") { let body = ""; req.on("data", d => body += d); req.on("end", () => res.end(JSON.stringify({ amount: 8, estimatedPower: 8, calculation: {} }))); return; }
+      if (req.method === "POST" && req.url === "/api/v1/video/generations") { let body = ""; req.on("data", d => body += d); req.on("end", () => { posted = JSON.parse(body); res.end(JSON.stringify({ taskId: "draft-job", status: "queued" })); }); return; }
+      res.end(JSON.stringify({ taskId: "draft-job", status: "queued" }));
+    });
+    await new Promise<void>(r => server.listen(0, "127.0.0.1", r));
+    const dir = await mkdtemp(join(tmpdir(), "wowidea-draft-cli-")); dirs.push(dir);
+    const env = { EASYAI_CONFIG_DIR: dir, EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
+    try {
+      const result = await run(["--json", "video", "generate", "--direct", "--no-wait", "--data", JSON.stringify({ model: "Seedance-2.5-Draft", prompt: "slow push", duration: 5, resolution: "720p", aspect_ratio: "16:9", audio: false })], env);
+      expect(result.code, result.err).toBe(0);
+      expect(posted).toMatchObject({ model: "Seedance-2.5-Draft", draft: true, resolution: "720p", watermark: false });
+    } finally { await new Promise<void>(r => server.close(() => r())); }
+  });
+  it("prints capabilities and refuses a final prompt without calling the website", async () => {
+    const caps = await run(["capabilities", "--json"], {});
+    expect(caps.code, caps.err).toBe(0);
+    const data = JSON.parse(caps.out).data;
+    expect(data.schemaVersion).toBe("wowidea.capabilities/v1");
+    expect(data.decision.join("\n")).toContain("video finalize");
+    expect(data.commands.some((row: { command: string }) => row.command.startsWith("video finalize"))).toBe(true);
+    const refused = await run(["--json", "video", "generate", "--direct", "--task", "成片", "--prompt", "do not spend"], { EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: "http://127.0.0.1:1" });
+    expect(refused.code).toBe(2);
+    expect(refused.err).toContain("finalize");
   });
   it("keeps one POST across real CLI process restart and uncertain recovery", async () => {
     let posts = 0;

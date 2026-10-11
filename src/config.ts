@@ -45,14 +45,15 @@ export async function saveProfile(name: string, update: Partial<ProfileConfig>):
 
 async function keytar(): Promise<{ getPassword(s: string, a: string): Promise<string | null>; setPassword(s: string, a: string, p: string): Promise<void>; deletePassword(s: string, a: string): Promise<boolean> }> {
   try { return (await import("keytar")).default; }
-  catch { throw new CliError("OS credential storage is unavailable. Install the optional keytar package or use EASYAI_API_KEY/EASYAI_ACCESS_TOKEN.", ExitCode.Auth); }
+  catch { throw new CliError("OS credential storage is unavailable. Install the optional keytar package or set WOWIDEA_API_KEY.", ExitCode.Auth); }
 }
 
 export async function setSecret(profile: string, kind: "api-key" | "session", value: string): Promise<void> {
   await (await keytar()).setPassword(service, `${profile}:${kind}`, value);
 }
 export async function getSecret(profile: string): Promise<{ kind: "api-key" | "session"; value: string } | null> {
-  if (process.env.EASYAI_API_KEY) return { kind: "api-key", value: process.env.EASYAI_API_KEY };
+  const envKey = process.env.WOWIDEA_API_KEY || process.env.EASYAI_API_KEY;
+  if (envKey) return { kind: "api-key", value: envKey };
   if (process.env.EASYAI_ACCESS_TOKEN) return { kind: "session", value: process.env.EASYAI_ACCESS_TOKEN };
   const store = await keytar();
   const apiKey = await store.getPassword(service, `${profile}:api-key`);
@@ -67,5 +68,5 @@ export async function clearSecrets(profile: string): Promise<void> {
 
 export async function creativeDefaults(): Promise<{ image: string; video: string }> {
   const saved = await readFile(join(configDir(), "wowidea-install.json"), "utf8").then(JSON.parse).catch(() => ({}));
-  return { image: "Nano Banana 2", video: "豆包Seedance-2.0", ...saved.defaults };
+  return { image: "Nano Banana 2", video: "Seedance-2.5-Draft", ...saved.defaults };
 }

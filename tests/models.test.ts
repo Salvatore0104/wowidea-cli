@@ -5,7 +5,7 @@ const catalog = { data: { items: registry.map(r => ({ id: r.id, modelName: r.mod
 describe("model routing", () => {
   it("selects defaults and explicit MiniMax without substitution", () => {
     expect(routeModel(catalog, "image").id).toBe("Nano Banana 2");
-    expect(routeModel(catalog, "video").id).toBe("豆包Seedance-2.0");
+    expect(routeModel(catalog, "video").id).toBe("Seedance-2.5-Draft");
     expect(routeModel(catalog, "video", "minimax").id).toBe("MiniMax-H3");
     expect(routeModel(catalog, "video", "Seedance 2.5").id).toBe("豆包Seedance-2.5");
     expect(routeModel(catalog, "video", "Wan3.0 Prime").id).toBe("Wan3.0-Video-Prime");
@@ -13,7 +13,7 @@ describe("model routing", () => {
     expect(() => routeModel(catalog, "image", "MiniMax-H3")).toThrow();
   });
   it("keeps 2.0 and 2.5 separate and bundles every guide", async () => {
-    expect(routeModel(catalog, "video", "豆包Seedance-2.5").guide).not.toBe(routeModel(catalog, "video").guide);
+    expect(routeModel(catalog, "video", "豆包Seedance-2.5").guide).not.toBe(routeModel(catalog, "video", "豆包Seedance-2.0").guide);
     for (const entry of registry) await access(`skill/wowidea/${entry.guide}`);
     expect(registry.length).toBeGreaterThanOrEqual(12);
   });

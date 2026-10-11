@@ -21,6 +21,10 @@ export const registry = [
   ["豆包Seedance-2.0-fast", "doubao-seedance-2-0-fast-260128", "video", "seedance-20"],
   ["豆包Seedance-2.0-mini", "doubao-seedance-2-0-mini-260615", "video", "seedance-20"],
   ["豆包Seedance-2.5", "doubao-seedance-2-5-260628", "video", "seedance-25"],
+  ["Seedance-2.5-Draft", "doubao-seedance-2-5-260628", "video", "seedance-25"],
+  ["Seedance-2.5-Final", "doubao-seedance-2-5-260628", "video", "seedance-25"],
+  ["Doubao-Seedream-5.0-flash", "doubao-seedream-5-0-flash-260915", "image", "workflow"],
+  ["Seedream-5.0-Pro", "doubao-seedream-5-0-pro-260628", "image", "workflow"],
 ].map(([id, modelName, kind, guide]) => ({ id: id!, modelName: modelName!, kind: kind!, guide: `references/${guide}.md`, adapter: kind === "image" ? "platform-image" : "platform-video" }));
 const norm = (s: string) => s.toLowerCase().replace(/[\s_.-]/g, "").replace(/^豆包/, "");
 export function modelIdentifiers(row: any): string[] {
@@ -57,8 +61,8 @@ export function registryEntry(row: any) {
 }
 export function routeModel(catalog: unknown, kind: string, requested?: string) {
   if (!["image", "video"].includes(kind)) throw new CliError("kind must be image or video", ExitCode.Usage);
-  const name = requested || (kind === "image" ? "Nano Banana 2" : "豆包Seedance-2.0");
-  const aliases: Record<string, string> = { minimax: "MiniMax-H3", seedance: "豆包Seedance-2.0", wan30: "Wan3.0-Video", wan30prime: "Wan3.0-Video-Prime", midjourney: "Midjourney v8.2", mj: "Midjourney v8.2", gptimage25: "GPT Image 2.5" };
+  const name = requested || (kind === "image" ? "Nano Banana 2" : "Seedance-2.5-Draft");
+  const aliases: Record<string, string> = { minimax: "MiniMax-H3", seedance: "Seedance-2.5-Draft", seedance25draft: "Seedance-2.5-Draft", seedance25final: "Seedance-2.5-Final", wan30: "Wan3.0-Video", wan30prime: "Wan3.0-Video-Prime", midjourney: "Midjourney v8.2", mj: "Midjourney v8.2", gptimage25: "GPT Image 2.5" };
   const alias = aliases[norm(name)] || name;
   let entry = registry.find(r => [r.id, r.modelName].some(v => norm(v) === norm(alias)));
   if (!entry) { const found = findModel(catalog, alias); if (found && matchesModelType(found, kind)) entry = { id: found.id || found.name || alias, modelName: found.modelName || found.name || alias, kind, guide: "references/workflow.md", adapter: `platform-${kind}` }; }

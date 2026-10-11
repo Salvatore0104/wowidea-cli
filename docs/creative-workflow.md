@@ -4,7 +4,7 @@
 
 ## 首次使用文案
 
-> 请初始化当前目录并绑定同名 Wowidea 无限画布。以后图片、视频生成与修改默认在画布创建节点链，结果同时保留和下载；只有我明确指定 --direct 时才走旧接口。Seedance 遵守本项目分镜审批与 watermark:false 门禁。
+> 请初始化当前目录并绑定同名 Wowidea 无限画布。以后图片、视频生成与修改默认在画布创建节点链，结果同时保留和下载；只有我明确指定 --direct 时才走旧接口。视频默认 Seedance 2.5 样片。成片只用 `wowidea video finalize <draftId> --yes`，先看估价。watermark:false。
 
 ## 初始化
 

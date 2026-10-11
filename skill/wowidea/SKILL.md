@@ -5,13 +5,25 @@ description: Generate and edit images and videos through the user's Wowidea webs
 
 # Wowidea
 
+## Decision
+
+```text
+wowidea capabilities --json
+wowidea models by-task <task> --json
+wowidea image|video generate --task <task> --prompt "..." --json --direct
+read data.taskId data.paths data.model
+成片: wowidea video finalize <draftId>   then the same command with --yes
+```
+
+Tasks: direction, retouch, retouch-precise, typography, layering, video, video-final, 3d, music, tts. Video default is Seedance-2.5-Draft. Seedance-2.5-Final is not a prompt and is never batched. No image tool in the harness: call this CLI or `https://wowidea.top/api/mcp`. Do not refuse and do not draw SVG.
+
 Turn the user's request into a model node on the bound Wowidea infinite Canvas, execute it once, and return the downloaded output. Reply in the user's language. The website handles provider redundancy and failover; never call providers directly.
 
 Control Canvas only through the project CLI and its HTTP/WebSocket APIs. Never use Computer Use, browser automation, or manual website interaction as a fallback. If Canvas authentication, authorization, or an API command fails, report the exact CLI diagnostic and stop or repair the CLI session; do not continue the operation through the website UI.
 
 ## Understand the request
 
-Preserve the user's model, copy, references and output settings. Ask only when missing information materially changes the result. Prompt-only requests do not generate media. Seedance follows the active project's storyboard and approval gate; never bypass it through Canvas execution.
+Preserve the user's model, copy, references and output settings. Ask only when missing information materially changes the result. Prompt-only requests do not generate media. Storyboard approval is optional and is not a generation gate. A Seedance 2.5 final render uses `wowidea video finalize <draftId> --yes` after the cost preview.
 
 ## Prepare parameters and references
 
@@ -44,7 +56,8 @@ Common commands (replace values with the user's request):
 ```text
 wowidea image generate --prompt "Product photo on a pale blue background" --model "Nano Banana 2" --resolution 4K --ratio 3:4
 wowidea image edit --prompt "Change only the background to green" --reference ./product.png --model "Nano Banana 2"
-wowidea video generate --prompt "Camera slowly approaches a ceramic cup" --model "Wan3.0-Video" --duration 5 --resolution 480p --ratio 16:9 --no-audio
+wowidea video generate --task video --prompt "Camera slowly approaches a ceramic cup" --duration 5 --resolution 720p --ratio 16:9 --no-audio --json --direct
+wowidea video finalize <draftId> --yes --json
 ```
 
 Use direct generation options OR `--file request.json`, never both. Other supported JSON parameters remain available through the file interface. Request keys and local records are automatic; default execution waits and downloads. Retain the process handle until it exits. Use `--no-wait` only when asynchronous submission is useful, then track the returned task.
