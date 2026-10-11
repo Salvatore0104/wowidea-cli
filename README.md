@@ -1,14 +1,54 @@
-# Wowidea：Codex 驱动的视觉创作 Agent
+# Wowidea CLI
 
-通过网站账号在无限画布中生成图片和视频，默认保留节点链、等待完成并下载。`wowidea` 与 `easyai` 是创作入口，`easyai-canvas` 是官方完整画布控制入口。
+在 [wowidea.top](https://wowidea.top) 上生成图片、样片视频、透明图层和批量任务。`wowidea` 与 `easyai` 是同一入口，`easyai-canvas` 是完整画布控制。接口基址 `https://wowidea.top/api/v1`。密钥用环境变量 `WOWIDEA_API_KEY`。
+
+任何助手先读 [AGENTS.md](AGENTS.md)，再运行一条命令：
+
+```text
+wowidea capabilities --json
+```
 
 ## 日常使用
 
 ```text
-wowidea image generate --prompt "浅蓝背景上的陶瓷杯产品照" --model "Nano Banana 2" --resolution 4K --ratio 3:4
-wowidea image edit --prompt "只把背景改成绿色" --reference ./product.png --model "Nano Banana 2"
-wowidea video generate --prompt "镜头缓慢靠近陶瓷杯" --model "Wan3.0-Video" --duration 5 --resolution 480p --ratio 16:9 --no-audio
+wowidea models by-task direction --json
+wowidea image generate --task typography --prompt "海报标题：夏日陶瓷" --json --direct
+wowidea video generate --task video --prompt "镜头缓慢靠近陶瓷杯" --duration 5 --json --direct
+wowidea video finalize <draftId>
+wowidea video finalize <draftId> --yes
+wowidea layers --layer cup --from ./green.png --out ./layers --json
+wowidea key ./subject.png --out ./cutout.png --json
+wowidea batch run --manifest jobs.json --concurrency 6 --json
 ```
+
+先看 `wowidea capabilities --brief`。视频样片的显示名是 Seedance 2.5 样片，实际请求只有 `豆包Seedance-2.5`、`content`、`draft: true`、`480p`、时长、画幅和 `audio`。别名 `Seedance-2.5-Draft` 不能生成可成片的样片。成片固定 1080p：第一次 `video finalize` 打印估算价并以退出码 2 停下；已经成片过再预览是退出码 0。`--yes` 才扣费，重复执行会下载已有成片。结果轮询 `GET /v1/ai/result/{id}`。视频地址 24 小时内失效，会立刻下载。
+
+没有内置画图的助手应调用本 CLI，或连接已有 MCP，不要拒绝，也不要改画 SVG：
+
+```json
+{ "mcpServers": { "wowidea": { "url": "https://wowidea.top/api/mcp", "headers": { "Authorization": "Bearer sk-YOUR_KEY" } } } }
+```
+
+## 任务路由
+
+表在 `data/model-routing.json`，可用 `wowidea models by-task <task> --json` 查看。
+
+| 任务 | 默认模型 |
+| --- | --- |
+| direction 方向 / moodboard | mj-v8.2（`--fast` 用 mj-v8.2-fast） |
+| retouch 修图 | Nano Banana 2 |
+| retouch-precise 精修 | Nano Banana Pro |
+| typography 海报文字 | gpt-image-2.5 |
+| layering 分层 | Doubao-Seedream-5.0-flash，高质量用 layering-hq |
+| video 样片 | 显示名 Seedance 2.5 样片；请求 `豆包Seedance-2.5` + draft + 480p |
+| video-final 成片 | 仅 `video finalize`，模型 Seedance-2.5-Final |
+| 3d / music / tts | Trip3D、Suno V6、MiniMax Speech 2.8 |
+
+画布仍是默认创作面；`--direct` 走 REST。旧的分镜审批命令还在，但不再拦住生成。
+
+## English
+
+Set `WOWIDEA_API_KEY`. Run `wowidea capabilities --brief`, then `wowidea image|video generate --task <task> --prompt "..." --json --direct`. Read `data.taskId`, `data.paths`, and `data.model`. A new finalize preview exits 2. A dedupe hit exits 0. Pay only with `wowidea video finalize <draftId> --yes`.
 
 生成前先运行一次 `wowidea project setup --dir <项目目录> --name <画布名称>`，创建并绑定同名远端画布。以后生成会创建新的非破坏式节点链、自动保存请求标识、等待并下载；网站负责平台冗余。直接参数与 `--file` 二选一。只有明确需要旧接口时才添加 `--direct`。完整画布操作使用 `easyai-canvas`。
 

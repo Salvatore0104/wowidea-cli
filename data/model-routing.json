@@ -1,0 +1,382 @@
+{
+  "schemaVersion": "wowidea.routing/v1",
+  "defaults": {
+    "image": "Nano Banana 2",
+    "video": "Seedance-2.5-Draft",
+    "videoFinal": "Seedance-2.5-Final"
+  },
+  "tasks": {
+    "direction": {
+      "label": "方向 / 审美探索 / moodboard",
+      "media": "image",
+      "models": ["mj-v8.2", "mj-v8.2-fast"]
+    },
+    "retouch": {
+      "label": "修图 / 编辑",
+      "media": "image",
+      "models": ["Nano Banana 2"]
+    },
+    "retouch-precise": {
+      "label": "精修",
+      "media": "image",
+      "models": ["Nano Banana Pro"]
+    },
+    "typography": {
+      "label": "文字 / 排版 / 海报",
+      "media": "image",
+      "models": ["gpt-image-2.5"]
+    },
+    "layering": {
+      "label": "分层 / 图层分离",
+      "media": "image",
+      "models": ["Doubao-Seedream-5.0-flash"]
+    },
+    "layering-hq": {
+      "label": "高质量分层",
+      "media": "image",
+      "models": ["Seedream-5.0-Pro"]
+    },
+    "video": {
+      "label": "视频样片",
+      "media": "video",
+      "models": ["Seedance-2.5-Draft"]
+    },
+    "video-final": {
+      "label": "视频成片",
+      "media": "video",
+      "models": ["Seedance-2.5-Final"],
+      "finalizeOnly": true
+    },
+    "3d": {
+      "label": "3D",
+      "media": "3d",
+      "models": ["Trip3D-v3.1"]
+    },
+    "music": {
+      "label": "音乐",
+      "media": "music",
+      "models": ["Suno-V6"]
+    },
+    "tts": {
+      "label": "语音合成",
+      "media": "speech",
+      "models": ["MiniMax-Speech-2.8-HD"]
+    }
+  },
+  "aliases": {
+    "moodboard": "direction",
+    "aesthetic": "direction",
+    "explore": "direction",
+    "方向": "direction",
+    "审美": "direction",
+    "edit": "retouch",
+    "修图": "retouch",
+    "编辑": "retouch",
+    "precise": "retouch-precise",
+    "精修": "retouch-precise",
+    "poster": "typography",
+    "text": "typography",
+    "layout": "typography",
+    "海报": "typography",
+    "文字": "typography",
+    "排版": "typography",
+    "layer": "layering",
+    "layers": "layering",
+    "分层": "layering",
+    "抠图": "layering",
+    "视频": "video",
+    "样片": "video",
+    "draft": "video",
+    "final": "video-final",
+    "成片": "video-final",
+    "三维": "3d",
+    "音乐": "music",
+    "speech": "tts",
+    "语音": "tts"
+  },
+  "models": {
+    "mj-v8.2": {
+      "display": "Midjourney-v8.2",
+      "upstream": "mj-v8.2",
+      "purposes": ["direction", "aesthetic", "moodboard"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "审美和氛围强；文字、精确排版不可靠",
+      "fallback": ["mj-v8.2-fast", "Nano Banana 2"],
+      "nativeTransparency": false
+    },
+    "mj-v8.2-fast": {
+      "display": "Midjourney-v8.2-Fast",
+      "upstream": "mj-v8.2-fast",
+      "purposes": ["direction", "aesthetic", "moodboard"],
+      "quality": "high",
+      "speed": "fast",
+      "reliability": "方向探索的快速迭代；精细度低于标准版",
+      "fallback": ["mj-v8.2", "Nano Banana 2"],
+      "nativeTransparency": false
+    },
+    "Nano Banana 2": {
+      "display": "Nano Banana 2",
+      "upstream": "nano-banana-2-ext",
+      "purposes": ["retouch", "edit", "general"],
+      "quality": "high",
+      "speed": "fast",
+      "reliability": "修图和通用出图稳；复杂长文字让给 GPT Image",
+      "fallback": ["Nano Banana 2 Lite", "Nano Banana Pro"],
+      "nativeTransparency": false
+    },
+    "Nano Banana 2 Lite": {
+      "display": "Nano Banana 2 Lite",
+      "upstream": "nano-banana-2-lite-ext",
+      "purposes": ["retouch", "edit"],
+      "quality": "standard",
+      "speed": "fast",
+      "reliability": "便宜快速的修图备选",
+      "fallback": ["Nano Banana 2"],
+      "nativeTransparency": false
+    },
+    "Nano Banana Pro": {
+      "display": "Nano Banana Pro",
+      "upstream": "gemini-3-pro-image-preview",
+      "purposes": ["retouch-precise", "refine"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "精细修改优先；速度慢于 Nano Banana 2",
+      "fallback": ["Nano Banana 2"],
+      "nativeTransparency": false
+    },
+    "gpt-image-2.5": {
+      "display": "GPT Image 2.5",
+      "upstream": "gpt-image-2.5",
+      "purposes": ["typography", "layout", "poster"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "画面内文字和版式最稳；纯氛围探索不如 Midjourney",
+      "fallback": ["gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "GPT Image 2"],
+      "nativeTransparency": true
+    },
+    "gpt-image-2.5-flare": {
+      "display": "GPT Image 2.5 Flare",
+      "upstream": "gpt-image-2.5-flare",
+      "purposes": ["typography", "poster"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "2.5 的 flare 变体，文字任务备选",
+      "fallback": ["gpt-image-2.5", "gpt-image-2.5-sunburst"],
+      "nativeTransparency": true
+    },
+    "gpt-image-2.5-sunburst": {
+      "display": "GPT Image 2.5 Sunburst",
+      "upstream": "gpt-image-2.5-sunburst",
+      "purposes": ["typography", "poster"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "2.5 的 sunburst 变体，文字任务备选",
+      "fallback": ["gpt-image-2.5", "gpt-image-2.5-flare"],
+      "nativeTransparency": true
+    },
+    "GPT Image 2": {
+      "display": "GPT Image 2",
+      "upstream": "gpt-image-2",
+      "purposes": ["typography", "poster"],
+      "quality": "standard",
+      "speed": "medium",
+      "reliability": "文字可用，优先仍用 2.5",
+      "fallback": ["gpt-image-2.5"],
+      "nativeTransparency": true
+    },
+    "Doubao-Seedream-5.0-flash": {
+      "display": "Doubao Seedream 5.0 Flash",
+      "upstream": "doubao-seedream-5-0-flash-260915",
+      "purposes": ["layering", "cutout"],
+      "quality": "standard",
+      "speed": "fast",
+      "reliability": "分层和主体分离的默认；无原生 alpha 时走绿幕抠图",
+      "fallback": ["Seedream-5.0-Pro", "Nano Banana 2"],
+      "nativeTransparency": false
+    },
+    "Seedream-5.0-Pro": {
+      "display": "Doubao Seedream 5.0 Pro",
+      "upstream": "doubao-seedream-5-0-pro-260628",
+      "purposes": ["layering", "cutout"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "更高质量的分层；可走平台图层拆分，否则绿幕",
+      "fallback": ["Doubao-Seedream-5.0-flash", "Nano Banana 2"],
+      "nativeTransparency": false
+    },
+    "Seedance-2.5-Draft": {
+      "display": "Seedance 2.5 样片",
+      "upstream": "doubao-seedance-2-5-260628",
+      "purposes": ["video", "draft"],
+      "quality": "draft",
+      "speed": "fast",
+      "requestModel": "豆包Seedance-2.5",
+      "reliability": "显示名仍是 Seedance 2.5 样片。请求必须是 model 豆包Seedance-2.5、draft true、480p。别名 Seedance-2.5-Draft 不会生成可成片样片。成片用 video finalize",
+      "fallback": ["豆包Seedance-2.0-fast", "豆包Seedance-2.0", "豆包Seedance-2.0-mini", "Wan3.0-Video", "MiniMax-H3", "Google Omni"],
+      "nativeTransparency": false,
+      "draft": true
+    },
+    "Seedance-2.5-Final": {
+      "display": "Seedance 2.5 成片",
+      "upstream": "doubao-seedance-2-5-260628",
+      "purposes": ["video-final"],
+      "quality": "final",
+      "speed": "slow",
+      "reliability": "只接受样片 result id。禁止重发提示词，禁止进入 batch 或自动回退",
+      "fallback": [],
+      "nativeTransparency": false,
+      "finalizeOnly": true
+    },
+    "豆包Seedance-2.0": {
+      "display": "豆包Seedance-2.0",
+      "upstream": "doubao-seedance-2-0-260128",
+      "purposes": ["video"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "2.5 样片不可用时的视频备选",
+      "fallback": ["豆包Seedance-2.0-fast", "Wan3.0-Video", "MiniMax-H3"],
+      "nativeTransparency": false
+    },
+    "豆包Seedance-2.0-fast": {
+      "display": "豆包Seedance-2.0-fast",
+      "upstream": "doubao-seedance-2-0-fast-260128",
+      "purposes": ["video"],
+      "quality": "standard",
+      "speed": "fast",
+      "reliability": "更快的 2.0 备选，画质低于标准 2.0",
+      "fallback": ["豆包Seedance-2.0-mini", "Wan3.0-Video"],
+      "nativeTransparency": false
+    },
+    "豆包Seedance-2.0-mini": {
+      "display": "豆包Seedance-2.0-mini",
+      "upstream": "doubao-seedance-2-0-mini-260615",
+      "purposes": ["video"],
+      "quality": "draft",
+      "speed": "fast",
+      "reliability": "最低成本的视频备选",
+      "fallback": ["Wan3.0-Video", "MiniMax-H3"],
+      "nativeTransparency": false
+    },
+    "Wan3.0-Video": {
+      "display": "Wan 3.0 Video",
+      "upstream": "wan3.0-video",
+      "purposes": ["video"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "Seedance 不可用时的视频备选",
+      "fallback": ["Wan3.0-Video-Prime", "MiniMax-H3", "Google Omni"],
+      "nativeTransparency": false
+    },
+    "Wan3.0-Video-Prime": {
+      "display": "Wan 3.0 Video Prime",
+      "upstream": "wan3.0-video-prime",
+      "purposes": ["video"],
+      "quality": "high",
+      "speed": "slow",
+      "reliability": "Wan 高质量备选",
+      "fallback": ["Wan3.0-Video", "MiniMax-H3"],
+      "nativeTransparency": false
+    },
+    "MiniMax-H3": {
+      "display": "MiniMax H3",
+      "upstream": "MiniMax-H3",
+      "purposes": ["video"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "另一条视频路线；规格以实时能力为准",
+      "fallback": ["MiniMax-H3-Max", "Google Omni"],
+      "nativeTransparency": false
+    },
+    "MiniMax-H3-Max": {
+      "display": "MiniMax H3 Max",
+      "upstream": "MiniMax-H3-Max",
+      "purposes": ["video"],
+      "quality": "high",
+      "speed": "slow",
+      "reliability": "H3 高质量备选",
+      "fallback": ["MiniMax-H3", "Google Omni"],
+      "nativeTransparency": false
+    },
+    "Google Omni": {
+      "display": "Google Omni",
+      "upstream": "video_google_omni",
+      "purposes": ["video"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "视频链末端备选",
+      "fallback": ["MiniMax-H3"],
+      "nativeTransparency": false
+    },
+    "Trip3D-v3.1": {
+      "display": "Trip3D-v3.1",
+      "upstream": "v3.1-20260211",
+      "purposes": ["3d"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "默认 3D",
+      "fallback": ["Trip3D-P1"],
+      "nativeTransparency": false
+    },
+    "Trip3D-P1": {
+      "display": "Trip3D-P1",
+      "upstream": "P1-20260311",
+      "purposes": ["3d"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "3D 备选",
+      "fallback": ["Trip3D-v3.1"],
+      "nativeTransparency": false
+    },
+    "Suno-V6": {
+      "display": "Suno V6",
+      "upstream": "v6",
+      "purposes": ["music"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "默认音乐",
+      "fallback": ["Suno-V6-WILD", "Suno-V6-MINI"],
+      "nativeTransparency": false
+    },
+    "Suno-V6-WILD": {
+      "display": "Suno V6-WILD",
+      "upstream": "v6-wild",
+      "purposes": ["music"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "更野的音乐备选",
+      "fallback": ["Suno-V6", "Suno-V6-MINI"],
+      "nativeTransparency": false
+    },
+    "Suno-V6-MINI": {
+      "display": "Suno V6-MINI",
+      "upstream": "v6-mini",
+      "purposes": ["music"],
+      "quality": "standard",
+      "speed": "fast",
+      "reliability": "更快的音乐备选",
+      "fallback": ["Suno-V6"],
+      "nativeTransparency": false
+    },
+    "MiniMax-Speech-2.8-HD": {
+      "display": "MiniMax-Speech-2.8-HD",
+      "upstream": "speech-2.8-hd",
+      "purposes": ["tts", "speech"],
+      "quality": "high",
+      "speed": "medium",
+      "reliability": "默认语音",
+      "fallback": ["MiniMax-Speech-2.8-Turbo"],
+      "nativeTransparency": false
+    },
+    "MiniMax-Speech-2.8-Turbo": {
+      "display": "MiniMax-Speech-2.8-Turbo",
+      "upstream": "speech-2.8-turbo",
+      "purposes": ["tts", "speech"],
+      "quality": "standard",
+      "speed": "fast",
+      "reliability": "更快的语音备选",
+      "fallback": ["MiniMax-Speech-2.8-HD"],
+      "nativeTransparency": false
+    }
+  }
+}

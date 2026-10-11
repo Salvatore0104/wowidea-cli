@@ -1,0 +1,518 @@
+{
+  "schemaVersion": "wowidea.catalog/v1",
+  "source": "wowidea.top enabled models",
+  "models": [
+    {
+      "alias": "豆包Seedance-2.0",
+      "display": "豆包Seedance-2.0",
+      "upstream": "doubao-seedance-2-0-260128",
+      "upstreams": [
+        "doubao-seedance-2-0-260128"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "volces"
+    },
+    {
+      "alias": "豆包Seedance-2.0-fast",
+      "display": "豆包Seedance-2.0-fast",
+      "upstream": "doubao-seedance-2-0-fast-260128",
+      "upstreams": [
+        "doubao-seedance-2-0-fast-260128"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "volces"
+    },
+    {
+      "alias": "mimo-v2.6-flash",
+      "display": "MiMo V2.6 Flash",
+      "upstream": "mimo-v2.6-flash",
+      "upstreams": [
+        "mimo-v2.6-flash"
+      ],
+      "types": [
+        "text_generate",
+        "tools_call",
+        "image_analysis",
+        "omni"
+      ],
+      "provider": "xiaomi-mimo"
+    },
+    {
+      "alias": "Nano Banana 2",
+      "display": "Nano Banana 2",
+      "upstream": "nano-banana-2-ext",
+      "upstreams": [
+        "nano-banana-2-ext",
+        "gemini-3.1-flash-image-preview",
+        "gemini-3.1-flash-image",
+        "nano-banana-2-cl",
+        "nano-banana-2-2k-cl",
+        "nano-banana-2-4k-cl"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "google-gemini"
+    },
+    {
+      "alias": "Nano Banana Pro",
+      "display": "Nano Banana Pro",
+      "upstream": "gemini-3-pro-image-preview",
+      "upstreams": [
+        "gemini-3-pro-image-preview",
+        "google/gemini-3-pro-image-preview",
+        "nano-banana-pro-cl",
+        "nano-banana-pro-vip"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "google-gemini"
+    },
+    {
+      "alias": "GPT Image 2",
+      "display": "GPT Image 2",
+      "upstream": "gpt-image-2",
+      "upstreams": [
+        "gpt-image-2",
+        "gpt-image-2-vip"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "openai"
+    },
+    {
+      "alias": "豆包Seedance-2.5",
+      "display": "豆包Seedance-2.5",
+      "upstream": "doubao-seedance-2-5-260628",
+      "upstreams": [
+        "doubao-seedance-2-5-260628"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "volces"
+    },
+    {
+      "alias": "MiniMax-H3",
+      "display": "MiniMax H3",
+      "upstream": "MiniMax-H3",
+      "upstreams": [
+        "MiniMax-H3"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "minimax"
+    },
+    {
+      "alias": "glm-5.3-flash",
+      "display": "GLM-5.3-Flash",
+      "upstream": "glm-5.3-flash",
+      "upstreams": [
+        "glm-5.3-flash"
+      ],
+      "types": [
+        "text_generate",
+        "image_analysis",
+        "video_understanding",
+        "tools_call"
+      ],
+      "provider": "zhipu-openai"
+    },
+    {
+      "alias": "MiniMax-H3-Max",
+      "display": "MiniMax H3 Max",
+      "upstream": "MiniMax-H3-Max",
+      "upstreams": [
+        "MiniMax-H3-Max"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video"
+      ],
+      "provider": "minimax"
+    },
+    {
+      "alias": "豆包Seedance-2.0-mini",
+      "display": "豆包Seedance-2.0-mini",
+      "upstream": "doubao-seedance-2-0-mini-260615",
+      "upstreams": [
+        "doubao-seedance-2-0-mini-260615"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "volces"
+    },
+    {
+      "alias": "gpt-6-sol",
+      "display": "GPT 6 sol",
+      "upstream": "gpt-6-sol",
+      "upstreams": [
+        "gpt-6-sol"
+      ],
+      "types": [
+        "text_generate",
+        "image_analysis",
+        "tools_call"
+      ],
+      "provider": "openai"
+    },
+    {
+      "alias": "mj-v8.2",
+      "display": "Midjourney-v8.2",
+      "upstream": "mj-v8.2",
+      "upstreams": [
+        "mj-v8.2"
+      ],
+      "types": [
+        "image_edit",
+        "image_generate"
+      ],
+      "provider": "midjourney"
+    },
+    {
+      "alias": "mj-v8.2-fast",
+      "display": "Midjourney-v8.2-Fast",
+      "upstream": "mj-v8.2-fast",
+      "upstreams": [
+        "mj-v8.2-fast"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "midjourney"
+    },
+    {
+      "alias": "deepseek-flash",
+      "display": "DeepSeek-Flash",
+      "upstream": "deepseek-flash",
+      "upstreams": [
+        "deepseek-flash"
+      ],
+      "types": [
+        "text_generate",
+        "tools_call",
+        "image_analysis"
+      ],
+      "provider": "deepseek-openai"
+    },
+    {
+      "alias": "Qwen3.8-Max",
+      "display": "Qwen3.8-Max",
+      "upstream": "qwen3.8-max",
+      "upstreams": [
+        "qwen3.8-max"
+      ],
+      "types": [
+        "text_generate",
+        "image_analysis",
+        "tools_call"
+      ],
+      "provider": "aliyun-bailian-openai"
+    },
+    {
+      "alias": "Wan3.0-Video",
+      "display": "Wan 3.0 Video",
+      "upstream": "wan3.0-video",
+      "upstreams": [
+        "wan3.0-video"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "aliyun-bailian"
+    },
+    {
+      "alias": "Wan3.0-Video-Prime",
+      "display": "Wan 3.0 Video Prime",
+      "upstream": "wan3.0-video-prime",
+      "upstreams": [
+        "wan3.0-video-prime"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "aliyun-bailian"
+    },
+    {
+      "alias": "Google Omni",
+      "display": "Google Omni",
+      "upstream": "video_google_omni",
+      "upstreams": [
+        "video_google_omni",
+        "google-omni"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "google-gemini"
+    },
+    {
+      "alias": "Nano Banana 2 Lite",
+      "display": "Nano Banana 2 Lite",
+      "upstream": "nano-banana-2-lite-ext",
+      "upstreams": [
+        "nano-banana-2-lite-ext",
+        "nano-banana-2-lite"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "google-gemini"
+    },
+    {
+      "alias": "grok-imagine-2.0",
+      "display": "Grok Imagine 2.0",
+      "upstream": "grok-imagine-2.0",
+      "upstreams": [
+        "grok-imagine-2.0"
+      ],
+      "types": [
+        "image_generate"
+      ],
+      "provider": "grok"
+    },
+    {
+      "alias": "gpt-image-2.5",
+      "display": "GPT Image 2.5",
+      "upstream": "gpt-image-2.5-flare",
+      "upstreams": [
+        "gpt-image-2.5-flare",
+        "gpt-image-2.5"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "openai"
+    },
+    {
+      "alias": "MiniMax-Speech-2.8-HD",
+      "display": "MiniMax-Speech-2.8-HD",
+      "upstream": "speech-2.8-hd",
+      "upstreams": [
+        "speech-2.8-hd"
+      ],
+      "types": [
+        "text_to_speech"
+      ],
+      "provider": "minimax"
+    },
+    {
+      "alias": "MiniMax-Speech-2.8-Turbo",
+      "display": "MiniMax-Speech-2.8-Turbo",
+      "upstream": "speech-2.8-turbo",
+      "upstreams": [
+        "speech-2.8-turbo"
+      ],
+      "types": [
+        "text_to_speech"
+      ],
+      "provider": "minimax"
+    },
+    {
+      "alias": "Suno-V6",
+      "display": "Suno V6",
+      "upstream": "v6",
+      "upstreams": [
+        "v6"
+      ],
+      "types": [
+        "audio_generate"
+      ],
+      "provider": "suno"
+    },
+    {
+      "alias": "Suno-V6-WILD",
+      "display": "Suno V6-WILD",
+      "upstream": "v6-wild",
+      "upstreams": [
+        "v6-wild"
+      ],
+      "types": [
+        "audio_generate"
+      ],
+      "provider": "suno"
+    },
+    {
+      "alias": "Suno-V6-MINI",
+      "display": "Suno V6-MINI",
+      "upstream": "v6-mini",
+      "upstreams": [
+        "v6-mini"
+      ],
+      "types": [
+        "audio_generate"
+      ],
+      "provider": "suno"
+    },
+    {
+      "alias": "gpt-6-astra",
+      "display": "GTP 6 Astra",
+      "upstream": "gpt-6-astra",
+      "upstreams": [
+        "gpt-6-astra"
+      ],
+      "types": [
+        "text_generate",
+        "image_analysis",
+        "tools_call"
+      ],
+      "provider": "openai"
+    },
+    {
+      "alias": "gpt-image-2.5-flare",
+      "display": "GPT Image 2.5 Flare",
+      "upstream": "gpt-image-2.5-flare",
+      "upstreams": [
+        "gpt-image-2.5-flare"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "openai"
+    },
+    {
+      "alias": "gpt-image-2.5-sunburst",
+      "display": "GPT Image 2.5 Sunburst",
+      "upstream": "gpt-image-2.5-sunburst",
+      "upstreams": [
+        "gpt-image-2.5-sunburst"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "openai"
+    },
+    {
+      "alias": "mimo-v2.6-pro",
+      "display": "MiMo V2.6 Pro",
+      "upstream": "mimo-v2.6-pro",
+      "upstreams": [
+        "mimo-v2.6-pro"
+      ],
+      "types": [
+        "text_generate",
+        "tools_call",
+        "image_analysis",
+        "audio_understanding",
+        "video_understanding",
+        "omni"
+      ],
+      "provider": "xiaomi-mimo"
+    },
+    {
+      "alias": "Doubao-Seedream-5.0-flash",
+      "display": "Doubao Seedream 5.0 Flash",
+      "upstream": "doubao-seedream-5-0-flash-260915",
+      "upstreams": [
+        "doubao-seedream-5-0-flash-260915"
+      ],
+      "types": [
+        "image_generate",
+        "image_edit"
+      ],
+      "provider": "volces"
+    },
+    {
+      "alias": "Trip3D-v3.1",
+      "display": "Trip3D-v3.1",
+      "upstream": "v3.1-20260211",
+      "upstreams": [
+        "v3.1-20260211"
+      ],
+      "types": [
+        "multiview_to_model",
+        "text_to_model",
+        "image_to_model",
+        "mesh_edit"
+      ],
+      "provider": "tripo3d"
+    },
+    {
+      "alias": "Trip3D-P1",
+      "display": "Trip3D-P1",
+      "upstream": "P1-20260311",
+      "upstreams": [
+        "P1-20260311"
+      ],
+      "types": [
+        "text_to_model",
+        "image_to_model",
+        "multiview_to_model"
+      ],
+      "provider": "tripo3d"
+    },
+    {
+      "alias": "Seedream-5.0-Pro",
+      "display": "Doubao Seedream 5.0 Pro",
+      "upstream": "doubao-seedream-5-0-pro-260628",
+      "upstreams": [
+        "doubao-seedream-5-0-pro-260628"
+      ],
+      "types": [
+        "image_edit",
+        "image_generate"
+      ],
+      "provider": "volces"
+    },
+    {
+      "alias": "Seedance-2.5-Draft",
+      "display": "Seedance 2.5 样片",
+      "upstream": "doubao-seedance-2-5-260628",
+      "upstreams": [
+        "doubao-seedance-2-5-260628"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "volces"
+    },
+    {
+      "alias": "Seedance-2.5-Final",
+      "display": "Seedance 2.5 成片",
+      "upstream": "doubao-seedance-2-5-260628",
+      "upstreams": [
+        "doubao-seedance-2-5-260628"
+      ],
+      "types": [
+        "video_generate",
+        "image_to_video",
+        "omni_video"
+      ],
+      "provider": "volces"
+    }
+  ]
+}

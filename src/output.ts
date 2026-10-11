@@ -22,5 +22,7 @@ function summarize(value: unknown): string {
     return `${summarize(rest)}\n余额=${u.total ?? '查询不可用'} 可用=${u.available ?? '接口未提供'} 预占=${u.reserved ?? '接口未提供'} 实际扣费=${u.actualPoints ?? (u.settlementStatus === 'pending' ? '待结算' : '接口未提供')} 退款=${u.refundedPoints ?? '接口未提供'}`;
   }
   const summary = Object.entries(o).filter(([, v]) => ["string", "number", "boolean"].includes(typeof v)).slice(0, 8).map(([k, v]) => `${k}=${String(v)}`).join(" ") || JSON.stringify(o);
-  return Array.isArray(o.paths) ? `${summary}\n${o.paths.join('\n')}` : o.checks ? `${summary}\n${JSON.stringify(o.checks)}` : summary;
+  if (Array.isArray(o.paths) && o.paths.length) return `${summary}\n${o.paths.join("\n")}`;
+  if (Array.isArray(o.urls) && o.urls.length) return `${summary}\n${o.urls.join("\n")}`;
+  return o.checks ? `${summary}\n${JSON.stringify(o.checks)}` : summary;
 }

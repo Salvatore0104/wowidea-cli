@@ -49,11 +49,9 @@ export interface PlatformEstimate {
 }
 const asNumber = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null;
 /**
- * The website's own cost preview (the number its UI shows before you click
- * generate). Read-only, available to a normal account key, and it already
- * includes active platform/model discounts, so it replaces guessing discounts
- * from balance deltas. Returns null when the endpoint is unavailable so callers
- * can fall back to the offline snapshot.
+ * POST /api/integration-platform/models/estimatedBilling. This path is outside
+ * /v1, accepts an API key, and does not charge. The model list has no prices.
+ * Returns null when the endpoint is unavailable so callers can fall back.
  */
 export async function platformEstimate(api: EasyAiApi, params: Record<string, unknown>): Promise<PlatformEstimate | null> {
   try {

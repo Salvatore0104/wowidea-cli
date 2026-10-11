@@ -33,5 +33,5 @@ for (const entry of await readdir(join(root, 'skill'), { withFileTypes: true }))
   installedSkills.push(entry.name);
 }
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
-await writeFile(statePath, JSON.stringify({ ...previous, version: pkg.version, installedAt: new Date().toISOString(), defaults: previous.defaults || { image: 'Nano Banana 2', video: '豆包Seedance-2.0' }, destination, installedSkills, hashes, preserved }, null, 2));
-console.log(JSON.stringify({ installed: destination, version: pkg.version, installedSkills, preserved, message: 'Wowidea Skill 已安装；下一轮对话使用 $wowidea。更新保留了用户修改，待合并版本在配置目录 skill-updates。' }));
+await writeFile(statePath, JSON.stringify({ ...previous, version: pkg.version, installedAt: new Date().toISOString(), defaults: previous.defaults || { image: 'Nano Banana 2', video: 'Seedance-2.5-Draft' }, destination, installedSkills, hashes, preserved }, null, 2));
+console.log(JSON.stringify({ installed: destination, version: pkg.version, installedSkills, preserved, message: 'Wowidea Skill 已安装。任何助手先读 SKILL.md，再运行 wowidea capabilities --json。更新保留了用户修改，待合并版本在配置目录 skill-updates。' }));

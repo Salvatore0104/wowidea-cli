@@ -1,5 +1,7 @@
-# Optional Seedance storyboard tools
+# Seedance storyboard tools are optional
 
-Seedance is gated in this project. Prepare storyboard images and a UTF-8 manifest, verify approved references and exact billable settings, then obtain explicit approval. Submit through `video generate --manifest <approved.json>` with `watermark:false`; the CLI rejects an absent, stale or unapproved manifest. Canvas execution still submits one paid task only and never rerolls automatically.
+Generation does not require an approved manifest. `wowidea video generate --task video` submits only `model`, `content`, `draft`, `resolution`, `duration`, `aspect_ratio`, and `audio`. The model is `豆包Seedance-2.5` with `draft: true` and `resolution: 480p`. The display name stays Seedance 2.5 样片. Do not send model `Seedance-2.5-Draft`, and do not send `prompt`, `mode`, or `watermark` beside `content`.
 
-Use [execution](workflow.md) and [selection](auto-routing.md). Keep website capability checks, reference identity, watermark:false by default, one task key, and recovery without duplicate submission. Report actual media and available pointsUsage; missing billing is unknown, never zero.
+Seedance 2.5 成片 is not a second prompt. Run `wowidea video finalize <draftId>`, read the labeled estimate, then repeat with `--yes`. The final is 1080p. The CLI checks `videoGeneration.stage` is `draft`, reuses `existingTaskId`, and stores one idempotency UUID per draft. Batch jobs and fallback chains never submit a final render.
+
+`seedance validate` and `seedance approve` remain available when a project wants a storyboard record. They do not block generation.

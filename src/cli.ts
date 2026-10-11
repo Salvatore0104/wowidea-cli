@@ -12,14 +12,14 @@ import { CliError, ExitCode, isNotFound, redact } from "./errors.js";
 import { emit, OutputOptions } from "./output.js";
 import { localQuote, payloadHash, Quote, saveQuote } from "./preflight.js";
 import { approveManifest, creativeHash, readManifest, seedancePayload, uploadReferences, validateManifest, validateStoryboardQc } from "./seedance.js";
-import { submitAsyncWithRecovery, submitImageWithRecovery, listSubmissions, recoverSubmission, taskStatus, taskRows, generationSubmitTimeoutMs } from "./submission.js";
-import { findModel, matchesModelType, registryEntry, routeModel, validateCapabilities } from "./models.js";
+import { submitAsyncWithRecovery, submitImageWithRecovery, listSubmissions, recoverSubmission, readGeneration, taskStatus, taskRows, generationSubmitTimeoutMs } from "./submission.js";
+import { compactModelRow, DRAFT_ALIAS_NOTE, findModel, formatModelGroups, matchesModelType, registryEntry, routeModel, validateCapabilities } from "./models.js";
 import { initProject, readProject, recordCreation } from "./project.js";
 import { guideRegistry, guideInfo, showGuide } from "./guides.js";
 import { prepareVideoPayload, withOmniContent } from "./video-payload.js";
 
 import { setupProject } from './setup.js';
-import { usageResult } from './usage.js';
+import { presentBalance, usageResult } from './usage.js';
 import { loadPrices, importPrices, estimate, syncPrices, platformEstimate } from './pricing.js';
 import { autoRoute, applyPlatformEstimates } from './routing.js';
 import { normalizeRequest } from './request-normalization.js';
@@ -27,10 +27,27 @@ import { prepareReferences, uploadMedia, writeRun, refreshRun, referenceIdentity
 import { mediaInput } from './media-input.js';
 import { bindCanvasProject, canvasProjectUrl, ensureCanvasBinding, readCanvasBinding, verifyCanvasBinding } from './canvas-binding.js';
 import { generateOnCanvas } from './canvas-generation.js';
+import { capabilitiesBrief, capabilitiesDocument, formatCapabilitiesBrief } from './capabilities.js';
+import { loadModelCatalog } from './catalog.js';
+import { parseManifest, runBatch, type BatchClient } from './batch.js';
+import { keyImage } from './chroma.js';
+import { finalizeDraft } from './finalize.js';
+import { planLayers, renderLayers } from './layers.js';
+import { applyDraftContract, canFallback, endpointFor, isFinalizeModel, modelCard, resolveTask, seedanceWirePayload } from './task-router.js';
 
 interface GlobalOptions extends OutputOptions { profile?: string; canvasProfile?: string; baseUrl?: string; timeout: string; noColor?: boolean; apiKey?: string; apiKeyStdin?: boolean }
 const program = new Command();
-program.name("wowidea").description("Codex visual design agent for images, brands, products and video (easyai compatible)").version("0.7.4")
+program.name("wowidea").description("Images, video, and layers on wowidea.top. Start: wowidea capabilities --brief").version("0.8.0")
+  .addHelpText("after", `
+Examples:
+  wowidea capabilities --brief
+  wowidea models by-task direction --json
+  wowidea image generate --task typography --prompt "海报标题" --json --direct
+  wowidea video generate --task video --prompt "缓慢推近" --duration 5 --json --direct
+  wowidea video finalize <draftId> --yes
+  wowidea batch run --manifest jobs.json --concurrency 6 --json
+  wowidea key ./subject.png --out ./cutout.png
+`)
   .option("--profile <name>", "configuration profile")
   .option("--canvas-profile <name>", "separate Canvas OAuth profile")
   .option("--base-url <url>", "EasyAI server URL")
@@ -115,13 +132,13 @@ keys.command("list").action(async () => output(await (await apiFor(keys)).get("/
 keys.command("revoke").argument("<id>").action(async id => output(await (await apiFor(keys)).delete(`/auth-token/${enc(id)}`), keys));
 
 const models = program.command("models");
-models.command("list").option("--type <type>", "image, video, or a raw platform modelType").action(async (o, c) => {
+models.command("list").option("--type <type>", "image, video, or a raw platform modelType").option("--raw", "return the platform catalog instead of the compact list").action(async (o, c) => {
   const result = await (await apiFor(c)).get<any>("/v1/models");
   // The platform accepts but currently ignores ?type=, so filter locally and keep the flag honest.
-  const rows = taskRows(result);
-  if (!o.type) { await output(result, c); return; }
-  const filtered = rows.filter((row: any) => matchesModelType(row, o.type));
-  await output({ ...(result && typeof result === "object" ? result : {}), data: filtered, total: filtered.length }, c);
+  const rows = taskRows(result).filter((row: any) => !o.type || matchesModelType(row, o.type));
+  if (o.raw) { await output(o.type ? { ...(result && typeof result === "object" ? result : {}), data: rows, total: rows.length } : result, c); return; }
+  if (!globals(c).json) { await output(formatModelGroups(rows), c); return; }
+  await output(rows.map(compactModelRow), c);
 });
 models.command("show").argument("<id>").action(async (id, _o, c) => {
   const result = await (await apiFor(c)).get<unknown>("/v1/models");
@@ -145,11 +162,11 @@ tasks.command("resume").argument("<idempotencyKey>").option('--wait', 'wait and 
   const result = await usageResult(api, o.wait ? await completeGeneration(api, recovered, prior.kind, o.dir) : recovered);
   await refreshRun(prior.runPath, result); await output({ ...result, idempotencyKey: key }, c);
 });
-program.command("balance").action(async (_o, c) => output(await (await apiFor(c)).get("/v1/balance"), c));
+program.command("balance").action(async (_o, c) => { const presented = presentBalance(await (await apiFor(c)).get("/v1/balance")); await output(globals(c).json ? presented : { total: presented.total }, c); });
 
 function taskCommands(parent: Command, media: "image" | "video") {
-  parent.command("status").argument("<taskId>").action(async (id, _o, c) => (async()=>{const api=await apiFor(c);await output(await usageResult(api,await api.get(`/v1/tasks/${enc(id)}`)),c)})());
-  parent.command("download").argument("<taskId>").option("--dir <path>", "download directory", ".").action(async (id, o, c) => { const api=await apiFor(c); const value = await api.get(`/v1/tasks/${enc(id)}`); await output(await usageResult(api,{ taskId: id, task:value, paths: await downloadUrls(findUrls(value), resolve(o.dir,id)) }), c); });
+  parent.command("status").argument("<taskId>").action(async (id, _o, c) => (async()=>{const api=await apiFor(c);await output(await usageResult(api,await readGeneration(api,id)),c)})());
+  parent.command("download").argument("<taskId>").option("--dir <path>", "download directory", ".").action(async (id, o, c) => { const api=await apiFor(c); const value = await readGeneration(api, id); await output(await usageResult(api,{ taskId: id, task:value, paths: await downloadUrls(findUrls(value), resolve(o.dir,id)) }), c); });
   parent.command("watch").argument("<taskId>").option("--interval <ms>", "poll interval", "2000").action(async (id, o, c) => watchTask(await apiFor(c), id, Number(o.interval), c));
   if (media === "video") {
     parent.command("cancel").argument("<taskId>").action(async (id, _o, c) => output(await (await apiFor(c)).post(`/v1/tasks/${enc(id)}/cancel`), c));
@@ -192,24 +209,58 @@ const video = program.command('video');
 dataOptions(video.command('preflight')).action(async(o,c)=>output(await preflight(await apiFor(c),'video','/v1/video/preflight',await jsonInput(o)),c));
 registerMedia(video, 'video');
 taskCommands(video,'video');
+video.addHelpText("after", `
+Examples:
+  wowidea video generate --task video --prompt "缓慢推近" --duration 5 --json --direct
+  wowidea video finalize <draftId>
+  wowidea video finalize <draftId> --yes --json
+`);
+video.command("finalize").description("Seedance 2.5 成片 from a successful draft id. Prints the cost, then submits only with --yes.").argument("<draftId>").option("--yes", "submit the paid final render").option("--resolution <1080p|1440p>", "final resolution").option("--dir <path>", "download directory", "wowidea-output").option("--no-wait", "return the task id without waiting").action(async (draftId: string, o, c) => {
+  const api = await apiFor(c);
+  const result = await finalizeDraft(api, { draftId, yes: Boolean(o.yes), resolution: o.resolution });
+  if (!result.submitted && !result.deduped) { await output(result, c); process.exitCode = ExitCode.Usage; return; }
+  if (o.wait !== false && result.taskId && result.deduped && !o.yes) {
+    const task = await readGeneration(api, result.taskId);
+    await output({ ...result, status: taskStatus(task), paths: null, urls: findUrls(task) }, c);
+    return;
+  }
+  if (o.wait !== false && result.taskId && (result.submitted || (result.deduped && o.yes))) {
+    const completed = await usageResult(api, await completeGeneration(api, { taskId: result.taskId }, "video", o.dir));
+    await output({ ...result, ...completed }, c); return;
+  }
+  await output(result, c);
+});
 
 function registerMedia(parent: Command, kind: 'image'|'video') {
   const collect = (value: string, prior: string[]) => [...prior, value];
-  for (const action of ['generate','edit'] as const) dataOptions(parent.command(action)).option('--direct', 'use the legacy non-Canvas generation API explicitly').option('--idempotency-key <key>', 'optional request key; automatically persisted when omitted').option('--manifest <path>')
+  for (const action of ['generate','edit'] as const) dataOptions(parent.command(action).description(`${kind} ${action}. Example: wowidea ${kind} ${action} --prompt "..." ${kind === "video" && action === "generate" ? "--task video --duration 5 " : ""}--json --direct`)).option('--direct', 'use the legacy non-Canvas generation API explicitly').option('--idempotency-key <key>', 'optional request key; automatically persisted when omitted').option('--manifest <path>')
     .option('--prompt <text>').option('--model <name>').option('--resolution <value>').option('--ratio <value>').option('--duration <seconds>', 'video duration', Number).option('--mode <value>', 'website generation mode')
     .option('--audio', 'enable video audio').option('--no-audio', 'disable video audio').option('--quality <value>').option('--format <value>')
     .option('--reference <path-or-url>', 'image reference; repeat for multiple images', collect, []).option('--video-reference <path-or-url>', 'video reference', collect, []).option('--audio-reference <path-or-url>', 'audio reference', collect, [])
-    .option('--dir <path>', 'download directory','wowidea-output').option('--project-dir <path>', 'record directory','.').option('--parent <taskId>', 'source version task ID').option('--change <text>', 'revision summary').option('--purpose <text>').option('--stage <preview|final|edit|refine>').option('--prices <file>').option('--no-wait').option('--allow-reroll').action(async(o,c) => {
+    .option('--dir <path>', 'download directory','wowidea-output').option('--project-dir <path>', 'record directory','.').option('--parent <taskId>', 'source version task ID').option('--change <text>', 'revision summary').option('--purpose <text>').option('--stage <preview|final|edit|refine>').option('--task <task>', 'pick a model from the routing table').option('--fast', 'prefer the fast model for --task').option('--prices <file>').option('--no-wait').option('--allow-reroll').action(async(o,c) => {
     const api = await apiFor(c), startedAt = new Date().toISOString();
     let payload = await jsonInput(o);
-    if(o.manifest) { if(o.file || o.data) throw new CliError('Use manifest or request JSON, not both.',ExitCode.Usage); const m = await readManifest(resolve(o.manifest)); await validateManifest(m, true); if (m.state !== 'approved' || m.approval?.creativeHash !== creativeHash(m)) throw new CliError('Seedance manifest requires current explicit approval before paid execution.', ExitCode.Approval); payload = seedancePayload(m); }
+    if(o.manifest) { if(o.file || o.data) throw new CliError('Use manifest or request JSON, not both.',ExitCode.Usage); const m = await readManifest(resolve(o.manifest)); await validateManifest(m, true); payload = seedancePayload(m); }
     payload = mediaInput(o, payload, kind);
-    if (/seedance/i.test(String(payload.model || '')) && !o.manifest) throw new CliError('Seedance generation requires an approved storyboard manifest in this project.', ExitCode.Approval);
+    const plan = o.task ? resolveTask(String(o.task), { fast: Boolean(o.fast), stage: o.stage }) : undefined;
+    if (plan?.finalizeOnly) throw new CliError(plan.message || '成片请使用 wowidea video finalize <draftId> --yes', ExitCode.Usage);
+    if (plan && !payload.model) payload.model = plan.alias || plan.model;
+    if (plan?.params) { for (const [key, value] of Object.entries(plan.params)) if (payload[key] === undefined) payload[key] = value; }
+    if (isFinalizeModel(String(payload.model || ''))) throw new CliError('Seedance 2.5 成片不能重新提交提示词。运行 wowidea video finalize <draftId> --yes', ExitCode.Usage);
+    const chain = plan ? [...new Set([String(payload.model || plan.model), ...plan.chain])] : [String(payload.model || '')];
     if (!o.direct) {
       const canvasKey = o.idempotencyKey || (o.allowReroll ? randomUUID() : `canvas-${payloadHash({ kind, action, payload })}`);
       const result = await generateOnCanvas({ api, kind, action, payload, projectDir: o.projectDir, outputDir: o.dir, profile: globals(c).canvasProfile, wait: o.wait, requestKey: canvasKey });
       await output(result,c); return;
     }
+    const basePayload = { ...payload };
+    const explicitKey = o.idempotencyKey as string | undefined;
+    const attempts = (o.task ? chain : [String(basePayload.model || "")]).filter((name, index, all) => Boolean(name) && all.indexOf(name) === index);
+    let lastError: unknown;
+    for (let index = 0; index < Math.max(attempts.length, 1); index++) {
+      payload = { ...basePayload, ...(attempts[index] ? { model: attempts[index] } : {}) };
+      o.idempotencyKey = index === 0 ? explicitKey : `${explicitKey || "task"}:fb:${index}`;
+    try {
     const requestHash = payloadHash({ kind, action, purpose: o.purpose, stage: o.stage, payload: await referenceIdentity(payload, o.projectDir) });
     o.idempotencyKey ||= o.allowReroll ? randomUUID() : `auto-${requestHash}`;
     const prior = (await listSubmissions(api)).find(r => r.idempotencyKey === o.idempotencyKey);
@@ -230,13 +281,16 @@ function registerMedia(parent: Command, kind: 'image'|'video') {
     let routing: any;
     if(o.stage || o.purpose) {
       routing = autoRoute(catalog,{kind, model:payload.model as string, stage:o.stage || (action==='edit'?'edit':undefined), purpose:o.purpose, payload},book);
-      if(routing.needsInput) { await output(routing,c); return; } payload=routing.payload;
+      if(routing.needsInput) { await output(routing,c); return; }
+      if (routing.finalizeOnly) throw new CliError(routing.reason || "成片请使用 wowidea video finalize <draftId> --yes", ExitCode.Usage);
+      payload=routing.payload;
     }
     const selected=routeModel(catalog,kind,payload.model ? String(payload.model) : (await creativeDefaults())[kind]);
     payload.model=selected.model;
     if (kind === 'video') {
       const has = (field: string) => Array.isArray(payload[field]) && (payload[field] as unknown[]).length > 0;
       payload.mode ??= has('video_urls') ? 'video_reference' : has('image_urls') ? 'image_reference' : has('audio_urls') ? 'audio_reference' : 'text_to_video';
+      payload = applyDraftContract(payload, selected.id);
     }
     const allCapabilities = selected.capabilities.capabilities || {};
     const baseCapability = kind === 'image' ? allCapabilities[payload.image_urls ? 'image_edit' : 'image_generate'] || {} : allCapabilities.omni_video || allCapabilities[payload.mode === 'text_to_video' ? 'video_generate' : 'image_to_video'] || {};
@@ -248,8 +302,9 @@ function registerMedia(parent: Command, kind: 'image'|'video') {
       payload.duration ??= capability.forced_duration ?? (capability.duration_options?.includes(5) ? 5 : capability.duration_options?.[0] ?? Math.max(5, capability.duration_range?.[0] || 5));
       payload.audio ??= capability.output_audio_mode === 'always';
     }
-    if(kind==='video') { payload=prepareVideoPayload(payload); if(allCapabilities.omni_video) payload=withOmniContent(payload); }
+    if(kind==='video') { payload=prepareVideoPayload(payload); if(allCapabilities.omni_video && !payload.draft) payload=withOmniContent(payload); }
     payload=normalizeRequest(payload,kind); validateCapabilities(selected,payload);
+    payload=seedanceWirePayload(payload);
     if(kind==='image' && payload.image_urls) { payload.image=payload.image_urls; delete payload.image_urls; }
     const offlinePricing=estimate(book,selected.model,kind,payload);
     const livePricing=await platformEstimate(api,payload);
@@ -266,8 +321,15 @@ function registerMedia(parent: Command, kind: 'image'|'video') {
       const result=await usageResult(api,o.wait?await completeGeneration(api,submitted,kind,o.dir):submitted);
       Object.assign(record,{state:taskStatus(result),result,elapsedMs:Date.now()-Date.parse(startedAt)});
       if (ownsSubmission) await writeRun(o.projectDir,runKey,record); else if (prior?.runPath) await refreshRun(prior.runPath,result);
-      await output({...result,pricing,recordPath,idempotencyKey:o.idempotencyKey},c);
+      await output(presentTask(result, { pricing, recordPath, idempotencyKey: o.idempotencyKey, model: describedModel(selected, payload) }), c);
     } catch(error) { record.state='interrupted';record.error=String((error as Error).message);if (ownsSubmission) await writeRun(o.projectDir,runKey,record).catch(()=>{});throw error; }
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!o.task || index === attempts.length - 1 || !canFallback(error)) throw error;
+    }
+    }
+    throw lastError;
   });
 }
 
@@ -276,7 +338,7 @@ async function watchTask(api: EasyAiApi, id: string, interval: number, cmd: Comm
   const deadline = Date.now() + 30 * 60_000;
   let cursor = "";
   while (Date.now() < deadline) {
-    const task = await api.get<any>(`/v1/tasks/${enc(id)}`); const status = taskStatus(task);
+    const task = await readGeneration(api, id); const status = taskStatus(task);
     const terminal = ["completed", "succeeded", "success", "failed", "error", "cancelled", "canceled"].includes(status);
     if (globals(cmd).jsonl) await output(terminal ? await usageResult(api, { taskId: id, status, task }) : { taskId: id, status, cursor }, cmd);
     if (terminal) { if (!globals(cmd).jsonl) await output(await usageResult(api, task), cmd); return; }
@@ -295,7 +357,7 @@ async function completeGeneration(api: EasyAiApi, submitted: unknown, kind: "ima
   if (id && (!terminal() || (successful() && !urls.length))) {
     const deadline = Date.now() + 30 * 60_000;
     while (Date.now() < deadline) {
-      task = await api.get(`/v1/tasks/${enc(id)}`); status = taskStatus(task); urls = findUrls(task);
+      task = await readGeneration(api, id); status = taskStatus(task); urls = findUrls(task);
       if (terminal() && (!successful() || urls.length)) break;
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
@@ -338,6 +400,16 @@ async function readStdin(): Promise<string> { const chunks: Buffer[] = []; for a
 let directApiKeyPromise: Promise<string> | undefined;
 function readStdinApiKey(): Promise<string> { return directApiKeyPromise ||= readStdin(); }
 async function outputApiKeyOnce(value: unknown, cmd: Command): Promise<void> { const options = globals(cmd); if (options.output) throw new CliError("--output is disabled for API key creation because the plaintext is shown only once.", ExitCode.Usage); process.stderr.write("The account-level API key is shown once. Store it in an OS credential manager and revoke it immediately if exposed.\n"); process.stdout.write(JSON.stringify(options.json ? { schemaVersion: "easyai.cli/v1", data: value } : value, null, 2) + "\n"); }
+function describedModel(selected: { id: string; modelName?: string }, payload: Record<string, unknown>) {
+  const card = modelCard(selected.id);
+  return { alias: selected.id, upstream: card?.upstream || selected.modelName || selected.id, request: String(payload.model || selected.id) };
+}
+function presentTask(value: unknown, extra: Record<string, unknown> = {}): Record<string, unknown> {
+  const row: Record<string, unknown> = value && typeof value === "object" && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : { result: value };
+  const taskId = findTaskId(row);
+  if (taskId) row.taskId = taskId;
+  return { ...row, ...extra };
+}
 function findTaskId(value: unknown): string | undefined {
   if (!value || typeof value !== "object") return;
   const row = value as Record<string, any>; const id = row.taskId || row.task_id || row.id;
@@ -358,6 +430,81 @@ async function hiddenKey(): Promise<string> {
   });
 }
 async function runFfmpeg(args: string[]): Promise<boolean> { return new Promise(resolveResult => { const child = spawn("ffmpeg", args, { stdio: "ignore", windowsHide: true }); child.on("error", () => resolveResult(false)); child.on("exit", code => resolveResult(code === 0)); }); }
+
+program.command("capabilities").description("Offline routing table, commands, and schemas. Example: wowidea capabilities --brief").option("--brief", "short decision card, about 1k tokens").action(async (o, c) => {
+  if (o.brief && !globals(c).json && !globals(c).jsonl) { await output(formatCapabilitiesBrief(), c); return; }
+  await output(o.brief ? capabilitiesBrief() : capabilitiesDocument(), c);
+});
+
+async function describeTask(task: string, fast: boolean, cmd: Command) {
+  let catalog: unknown;
+  try { catalog = (await loadModelCatalog(await apiFor(cmd))).catalog; } catch { catalog = undefined; }
+  const resolved = resolveTask(task, { fast, catalog });
+  const generate = resolved.media === "video" ? "video" : resolved.media === "speech" ? "speech" : resolved.media === "music" ? "music" : resolved.media === "3d" ? "mesh" : "image";
+  return {
+    task: resolved.task, label: resolved.label, media: resolved.media, model: resolved.model, alias: resolved.alias, params: resolved.params, chain: resolved.chain,
+    finalizeOnly: resolved.finalizeOnly, source: resolved.source, endpoint: endpointFor(resolved.media),
+    ...(resolved.alias === "Seedance-2.5-Draft" ? { note: DRAFT_ALIAS_NOTE } : {}),
+    command: resolved.command || `wowidea ${generate} generate --task ${resolved.task} --prompt "..." --json --direct`,
+    message: resolved.message,
+    entries: resolved.entries.map(entry => ({ alias: entry.alias, display: entry.display, requestModel: entry.requestModel, quality: entry.quality, speed: entry.speed, fallback: entry.fallback, draft: Boolean(entry.draft), finalizeOnly: Boolean(entry.finalizeOnly), ...(entry.alias === "Seedance-2.5-Draft" ? { note: DRAFT_ALIAS_NOTE } : {}) })),
+  };
+}
+models.option("--by-task <task>", "same as: models by-task <task>").option("--fast", "with --by-task, prefer the fast model");
+models.command("by-task").description("Resolve a task to a model and fallback chain. Example: wowidea models by-task direction --json").argument("<task>").option("--fast", "prefer the fast model").action(async (task: string, o, c) => output(await describeTask(task, Boolean(o.fast), c), c));
+models.action(async (o, c) => {
+  if (!o.byTask) throw new CliError("Use models list, models show <id>, models by-task <task>, or models --by-task <task>.", ExitCode.Usage);
+  await output(await describeTask(String(o.byTask), Boolean(o.fast), c), c);
+});
+
+const batch = program.command("batch").description("Concurrent resumable jobs. Never submits a final video.");
+batch.command("run").description("Run a JSON, CSV, or simple YAML manifest. Example: wowidea batch run --manifest jobs.json --concurrency 6 --json").requiredOption("--manifest <file>", "jobs file").option("--concurrency <n>", "global in-flight limit", "6").option("--per-model <n>", "in-flight limit per model", "2").option("--out <dir>", "download directory", "wowidea-output/batch").option("--state <file>", "resume file").action(async (o, c) => {
+  const api = await apiFor(c);
+  const jobs = parseManifest(await readFile(resolve(o.manifest), "utf8"), o.manifest);
+  const client: BatchClient = {
+    async submit(job) {
+      let payload: Record<string, unknown> = { prompt: job.prompt, model: job.model, ...(job.params || {}) };
+      if (job.input && job.kind === "image") payload.image = [job.input];
+      if (job.kind === "video") payload = seedanceWirePayload(prepareVideoPayload(applyDraftContract(payload, job.model)));
+      const response = await api.post(job.endpoint, payload, { "Idempotency-Key": job.idempotencyKey, "x-async": "true" });
+      return { taskId: findTaskId(response), status: taskStatus(response), urls: findUrls(response) };
+    },
+    async poll(taskId) { const task = await readGeneration(api, taskId); return { status: taskStatus(task), urls: findUrls(task) }; },
+    download: (urls, directory) => downloadUrls(urls, directory),
+  };
+  const result = await runBatch({ jobs, outDir: o.out, statePath: o.state, concurrency: Number(o.concurrency), perModel: Number(o.perModel), client, onProgress: event => { if (!globals(c).json && !globals(c).jsonl) process.stderr.write(`${event.id || ""} ${event.status || ""}\n`); } });
+  await output(result, c);
+  if (!result.ok) process.exitCode = ExitCode.Service;
+});
+
+program.command("layers").description("Transparent PNG layers. Example: wowidea layers --layer subject --from ./green.png --out ./layers --json").option("--layer <name>", "layer name; repeat for more", (value: string, prior: string[]) => [...prior, value], [] as string[]).option("--scene <text>", "shared scene description", "").option("--out <dir>", "output directory", "wowidea-output/layers").option("--key <color>", "auto or #RRGGBB", "auto").option("--from <image>", "key this image instead of generating").option("--task <task>", "routing task when generating", "layering").action(async (o, c) => {
+  const names = o.layer as string[];
+  if (!names.length) throw new CliError("Pass at least one --layer.", ExitCode.Usage);
+  const generate = o.from
+    ? async () => readFile(resolve(o.from))
+    : async (request: { name: string; prompt: string }) => {
+      const api = await apiFor(c);
+      const routed = resolveTask(String(o.task), { catalog: (await loadModelCatalog(api)).catalog });
+      if (routed.finalizeOnly) throw new CliError(routed.message || "Refusing to generate a final video as a layer.", ExitCode.Usage);
+      const submitted = await submitDirect(api, endpointFor(routed.media), { model: routed.model, prompt: request.prompt, n: 1 }, { idempotencyKey: `layer-${payloadHash(request)}` });
+      const completed = await completeGeneration(api, submitted, "image", o.out);
+      const path = (completed as { paths?: string[] }).paths?.[0];
+      if (!path) throw new CliError(`Layer ${request.name} returned no image.`, ExitCode.Service);
+      return readFile(path);
+    };
+  const rendered = await renderLayers({ layers: names.map(name => ({ name })), scene: o.scene, outDir: resolve(o.out), key: o.key, generate });
+  await output({ layers: rendered.layers.map(({ key, ...layer }) => ({ ...layer, keyColor: key })) }, c);
+});
+
+program.command("key").description("Cut a flat-color background to a transparent PNG. Example: wowidea key ./subject.png --out ./cutout.png --json").argument("<image>").option("--out <png>", "output PNG").option("--key <color>", "auto or #RRGGBB", "auto").option("--shadow <mode>", "keep = original pixels unchanged (no despill); remove drops the shadow; neutral (default) is a gray semi-transparent shadow").action(async (image: string, o, c) => {
+  const shadow = o.shadow === undefined ? "neutral" : o.shadow;
+  if (shadow !== "keep" && shadow !== "remove" && shadow !== "neutral") throw new CliError("--shadow must be keep, remove, or neutral.", ExitCode.Usage);
+  const keyed = await keyImage(await readFile(resolve(image)), { key: o.key, shadow });
+  const path = resolve(o.out || image.replace(/\.\w+$/, "") + ".cutout.png");
+  await mkdir(resolve(path, ".."), { recursive: true });
+  await writeFile(path, keyed.png);
+  await output({ path, keyColor: keyed.key, method: keyed.method, width: keyed.width, height: keyed.height }, c);
+});
 
 program.exitOverride();
 program.parseAsync().catch(async error => {

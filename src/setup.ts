@@ -31,6 +31,7 @@ export async function setupProject(directory: string, update = false, packageRoo
     };
     await copy(join(packageRoot, 'dist'), '.wowidea/runtime/dist');
     await copy(join(packageRoot, 'skill'), '.wowidea/runtime/skill');
+    if (await exists(join(packageRoot, 'data'))) await copy(join(packageRoot, 'data'), '.wowidea/runtime/data');
     await copy(join(packageRoot, 'skill', 'wowidea'), '.agents/skills/wowidea');
     await copy(join(packageRoot, 'skill', 'easyai'), '.agents/skills/easyai');
     await copy(join(packageRoot, 'skill', 'gpt-image-25-prompt'), '.agents/skills/gpt-image-25-prompt');
@@ -50,6 +51,20 @@ export async function setupProject(directory: string, update = false, packageRoo
       for (const name of ['package.json', 'LICENSE']) if (await exists(join(keytarRoot, name))) await writeFile(join(root, '.wowidea/runtime/node_modules/keytar', name), await readFile(join(keytarRoot, name)));
       credentialRuntime.available = true;
     }
+    const require = createRequire(join(packageRoot, 'package.json'));
+    const copyPackage = async (name: string) => {
+      const from = dirname(require.resolve(`${name}/package.json`));
+      await copy(from, join('.wowidea/runtime/node_modules', name));
+    };
+    await copyPackage('sharp');
+    for (const name of ['detect-libc', 'semver', '@img/colour']) {
+      try { await copyPackage(name); } catch { /* sharp still loads when the platform binary is present */ }
+    }
+    const imageRoot = join(dirname(require.resolve('sharp/package.json')), '..', '@img');
+    for (const entry of await readdir(imageRoot, { withFileTypes: true }).catch(() => [])) {
+      if (!entry.isDirectory() || !entry.name.startsWith('sharp-')) continue;
+      await copy(join(imageRoot, entry.name), join('.wowidea/runtime/node_modules/@img', entry.name));
+    }
     const runtimePackage = join(root, '.wowidea/runtime/package.json');
     await writeFile(runtimePackage, JSON.stringify({ name: pkg.name, version: pkg.version, type: 'module', credentialRuntime }, null, 2));
   }
@@ -57,7 +72,7 @@ export async function setupProject(directory: string, update = false, packageRoo
   const instructionName = await exists(join(root, 'AGENTS.override.md')) ? 'AGENTS.override.md' : 'AGENTS.md';
   const instructions = join(root, instructionName), old = await readFile(instructions, 'utf8').catch(() => '');
   const begin = '<!-- wowidea:begin -->', end = '<!-- wowidea:end -->';
-  const block = `${begin}\n## Wowidea media workflow\nFor image/video generation and editing, read .agents/skills/wowidea/SKILL.md. Use node .wowidea/runtime/dist/cli.js for creation and node .wowidea/runtime/dist/canvas-cli.js for full Canvas control. Creation defaults to the bound infinite Canvas; --direct is an explicit compatibility mode. Control Canvas only through the CLI and its HTTP/WebSocket APIs. Never use Computer Use, browser automation, or manual website interaction as a fallback; report and repair CLI authentication or API failures instead. Preserve the user's model and settings, keep outputs on Canvas and download them, and never automatically reroll. After Canvas generation or editing, open the returned canvasUrl in Codex's right-side browser panel and include the full URL in the final reply. The panel is for the user; Agent mutations remain CLI/API-only. The website handles provider failover. Seedance requires the project approval gate and watermark:false. Keep credentials outside project files. No Git publication or website administration is implied.\n${end}`;
+  const block = `${begin}\n## Wowidea media workflow\nRead .agents/skills/wowidea/SKILL.md, then wowidea capabilities --json. Pick a task, run the printed command, and read data.taskId, data.paths, and data.model. Use node .wowidea/runtime/dist/cli.js for creation and node .wowidea/runtime/dist/canvas-cli.js for full Canvas control. Creation defaults to the bound infinite Canvas; --direct is an explicit compatibility mode. Control Canvas only through the CLI and its HTTP/WebSocket APIs. Never use Computer Use, browser automation, or manual website interaction as a fallback; report and repair CLI authentication or API failures instead. If this harness cannot draw images, call the CLI or https://wowidea.top/api/mcp. Do not refuse and do not draw SVG. Video 样片 is 豆包Seedance-2.5 with draft true and 480p. A final render is only wowidea video finalize <draftId> --yes after the labeled estimate. Never batch or auto-fallback a final. Preserve the user's model and settings, keep outputs on Canvas and download them, and never automatically reroll. Keep credentials outside project files. No Git publication or website administration is implied.\n${end}`;
   if (old.includes(begin) !== old.includes(end)) throw new CliError('Incomplete Wowidea instruction markers; preserve and repair the existing file first.', ExitCode.Conflict);
   const next = old.includes(begin) ? old.slice(0, old.indexOf(begin)) + block + old.slice(old.indexOf(end) + end.length) : old + (old.endsWith('\n') || !old ? '' : '\n') + '\n' + block + '\n';
   await writeFile(instructions, next);

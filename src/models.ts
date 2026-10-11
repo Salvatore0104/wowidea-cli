@@ -21,6 +21,10 @@ export const registry = [
   ["豆包Seedance-2.0-fast", "doubao-seedance-2-0-fast-260128", "video", "seedance-20"],
   ["豆包Seedance-2.0-mini", "doubao-seedance-2-0-mini-260615", "video", "seedance-20"],
   ["豆包Seedance-2.5", "doubao-seedance-2-5-260628", "video", "seedance-25"],
+  ["Seedance-2.5-Draft", "doubao-seedance-2-5-260628", "video", "seedance-25"],
+  ["Seedance-2.5-Final", "doubao-seedance-2-5-260628", "video", "seedance-25"],
+  ["Doubao-Seedream-5.0-flash", "doubao-seedream-5-0-flash-260915", "image", "workflow"],
+  ["Seedream-5.0-Pro", "doubao-seedream-5-0-pro-260628", "image", "workflow"],
 ].map(([id, modelName, kind, guide]) => ({ id: id!, modelName: modelName!, kind: kind!, guide: `references/${guide}.md`, adapter: kind === "image" ? "platform-image" : "platform-video" }));
 const norm = (s: string) => s.toLowerCase().replace(/[\s_.-]/g, "").replace(/^豆包/, "");
 export function modelIdentifiers(row: any): string[] {
@@ -57,8 +61,8 @@ export function registryEntry(row: any) {
 }
 export function routeModel(catalog: unknown, kind: string, requested?: string) {
   if (!["image", "video"].includes(kind)) throw new CliError("kind must be image or video", ExitCode.Usage);
-  const name = requested || (kind === "image" ? "Nano Banana 2" : "豆包Seedance-2.0");
-  const aliases: Record<string, string> = { minimax: "MiniMax-H3", seedance: "豆包Seedance-2.0", wan30: "Wan3.0-Video", wan30prime: "Wan3.0-Video-Prime", midjourney: "Midjourney v8.2", mj: "Midjourney v8.2", gptimage25: "GPT Image 2.5" };
+  const name = requested || (kind === "image" ? "Nano Banana 2" : "Seedance-2.5-Draft");
+  const aliases: Record<string, string> = { minimax: "MiniMax-H3", seedance: "Seedance-2.5-Draft", seedance25draft: "Seedance-2.5-Draft", seedance25final: "Seedance-2.5-Final", wan30: "Wan3.0-Video", wan30prime: "Wan3.0-Video-Prime", midjourney: "Midjourney v8.2", mj: "Midjourney v8.2", gptimage25: "GPT Image 2.5" };
   const alias = aliases[norm(name)] || name;
   let entry = registry.find(r => [r.id, r.modelName].some(v => norm(v) === norm(alias)));
   if (!entry) { const found = findModel(catalog, alias); if (found && matchesModelType(found, kind)) entry = { id: found.id || found.name || alias, modelName: found.modelName || found.name || alias, kind, guide: "references/workflow.md", adapter: `platform-${kind}` }; }
@@ -117,4 +121,52 @@ export function validateCapabilities(selected: ReturnType<typeof routeModel>, pa
     if (kind === "audio" && refs.length && (rules.input_audio !== true || (mediaRules?.requires_visual_reference && !images.length && !videos.length))) throw new CliError("Audio reference combination is not supported.", ExitCode.Approval);
   }
   return payload;
+}
+
+export const DRAFT_ALIAS_NOTE = "alias only, do not send as model — use 豆包Seedance-2.5 + draft:true";
+
+export function isDraftAlias(id: string): boolean {
+  return id === "Seedance-2.5-Draft";
+}
+
+export function compactModelRow(row: any): { id: string; alias: string; types: string[]; upstream: string; note?: string } {
+  const entry = registryEntry(row);
+  const id = String(row?.id || row?.model || row?.name || "");
+  const alias = entry?.id || id;
+  return { id, alias, types: modelTypes(row), upstream: String(row?.modelName || row?.upstream || entry?.modelName || ""), ...(isDraftAlias(id) || isDraftAlias(alias) ? { note: DRAFT_ALIAS_NOTE } : {}) };
+}
+
+const VIDEO_TYPES = new Set(["video_generate", "image_to_video", "omni_video"]);
+const IMAGE_TYPES = new Set(["image_generate", "image_edit"]);
+const TEXT_TYPES = new Set(["text_generate", "tools_call", "image_analysis"]);
+
+export function primaryModelGroup(types: string[]): string {
+  const names = types.map(type => type.toLowerCase());
+  if (names.some(type => VIDEO_TYPES.has(type))) return "video";
+  if (names.some(type => IMAGE_TYPES.has(type))) return "image";
+  if (names.some(type => TEXT_TYPES.has(type))) return "text";
+  if (names.includes("audio_generate")) return "music";
+  if (names.includes("text_to_speech")) return "speech";
+  if (names.some(type => type.includes("3d"))) return "3d";
+  return names[0] || "other";
+}
+
+export function formatModelGroups(rows: any[]): string {
+  const groups = new Map<string, string[]>();
+  for (const row of rows) {
+    const item = compactModelRow(row);
+    const group = primaryModelGroup(item.types);
+    const list = groups.get(group) || [];
+    const label = item.note ? `${item.id} — ${item.note}` : item.id;
+    if (label && !list.includes(label)) list.push(label);
+    groups.set(group, list);
+  }
+  for (const [name, list] of groups) {
+    const sendable = list.filter(label => !label.startsWith("Seedance-2.5-Draft"));
+    const aliases = list.filter(label => label.startsWith("Seedance-2.5-Draft"));
+    groups.set(name, [...sendable, ...aliases]);
+  }
+  const preferred = ["image", "video", "text", "music", "speech", "3d"];
+  const order = [...preferred, ...[...groups.keys()].filter(name => !preferred.includes(name))];
+  return order.filter(name => groups.get(name)?.length).map(name => `${name}\n${groups.get(name)!.map(id => `  ${id}`).join("\n")}`).join("\n");
 }
