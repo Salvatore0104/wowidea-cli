@@ -43,6 +43,12 @@ export function pointsUsage(value: any): PointsUsage {
     balanceStatus: 'unavailable', queriedAt: new Date().toISOString(), source: 'task.billings/billing; /v1/balance' };
 }
 export function withPointsUsage<T>(value: T) { return { ...(value as object), pointsUsage: pointsUsage(value) }; }
+export function presentBalance(body: any): { total: number | null; raw: unknown } {
+  const data = body?.data && typeof body.data === "object" && !Array.isArray(body.data) ? body.data : body;
+  const total = typeof data?.total === "number" ? data.total : null;
+  return { total, raw: body };
+}
+
 export async function usageResult(api: EasyAiApi, value: unknown) {
   const usage = pointsUsage(value);
   try {

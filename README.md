@@ -21,7 +21,7 @@ wowidea key ./subject.png --out ./cutout.png --json
 wowidea batch run --manifest jobs.json --concurrency 6 --json
 ```
 
-视频样片的显示名是 Seedance 2.5 样片，实际请求是 `豆包Seedance-2.5`、`draft: true`、`480p`。别名 `Seedance-2.5-Draft` 不能生成可成片的样片。成片固定 1080p：`video finalize` 先打印估算价（按 1080p 直接生成价 149.68 积分/4 秒，不是精确报价）并以退出码 2 停下，加上 `--yes` 才会扣费。同一条样片不会成片两次。结果轮询 `GET /v1/ai/result/{id}`。视频地址 24 小时内失效，会立刻下载。
+先看 `wowidea capabilities --brief`。视频样片的显示名是 Seedance 2.5 样片，实际请求只有 `豆包Seedance-2.5`、`content`、`draft: true`、`480p`、时长、画幅和 `audio`。别名 `Seedance-2.5-Draft` 不能生成可成片的样片。成片固定 1080p：第一次 `video finalize` 打印估算价并以退出码 2 停下；已经成片过再预览是退出码 0。`--yes` 才扣费，重复执行会下载已有成片。结果轮询 `GET /v1/ai/result/{id}`。视频地址 24 小时内失效，会立刻下载。
 
 没有内置画图的助手应调用本 CLI，或连接已有 MCP，不要拒绝，也不要改画 SVG：
 
@@ -48,7 +48,7 @@ wowidea batch run --manifest jobs.json --concurrency 6 --json
 
 ## English
 
-Set `WOWIDEA_API_KEY`. Run `wowidea capabilities --json`, then `wowidea image|video generate --task <task> --prompt "..." --json --direct`. Read `data.taskId`, `data.paths`, and `data.model`. Finalize a Seedance 2.5 draft only with `wowidea video finalize <draftId> --yes`.
+Set `WOWIDEA_API_KEY`. Run `wowidea capabilities --brief`, then `wowidea image|video generate --task <task> --prompt "..." --json --direct`. Read `data.taskId`, `data.paths`, and `data.model`. A new finalize preview exits 2. A dedupe hit exits 0. Pay only with `wowidea video finalize <draftId> --yes`.
 
 生成前先运行一次 `wowidea project setup --dir <项目目录> --name <画布名称>`，创建并绑定同名远端画布。以后生成会创建新的非破坏式节点链、自动保存请求标识、等待并下载；网站负责平台冗余。直接参数与 `--file` 二选一。只有明确需要旧接口时才添加 `--direct`。完整画布操作使用 `easyai-canvas`。
 

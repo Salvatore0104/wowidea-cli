@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { taskStatus } from "../src/submission.js";
 import { findUrls } from "../src/api.js";
+import { presentBalance } from "../src/usage.js";
+import { compactModelRow, formatModelGroups } from "../src/models.js";
 
 describe("live result shapes", () => {
   it("treats a processing error on the tasks payload as still running", () => {
@@ -15,5 +17,15 @@ describe("live result shapes", () => {
     const video = { status: "success", task_type: "generation", data: [{ url: "https://tos.example/draft.mp4", videoGeneration: { resultId: "abc:0", stage: "draft" } }], output: ["https://tos.example/draft.mp4"] };
     expect(findUrls(video)).toEqual(["https://tos.example/draft.mp4"]);
     expect(taskStatus(video)).toBe("success");
+  });
+
+  it("flattens balance and compacts the model list", () => {
+    expect(presentBalance({ status: "success", data: { total: 12.5, balanceDetail: { availableForNewTask: 10 } } })).toMatchObject({ total: 12.5 });
+    const rows = [
+      { id: "Nano Banana 2", modelName: "nano-banana-2-ext", types: ["image_generate"] },
+      { id: "豆包Seedance-2.5", modelName: "doubao-seedance-2-5-260628", types: ["video_generate"] },
+    ];
+    expect(compactModelRow(rows[0])).toMatchObject({ id: "Nano Banana 2", alias: "Nano Banana 2", upstream: "nano-banana-2-ext", types: ["image_generate"] });
+    expect(formatModelGroups(rows)).toBe("image\n  Nano Banana 2\nvideo\n  豆包Seedance-2.5");
   });
 });

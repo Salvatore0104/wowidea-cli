@@ -19,4 +19,4 @@ wowidea key ./subject.png --out ./cutout.png --json
 wowidea batch run --manifest jobs.json --concurrency 6 --json
 ```
 
-Read `data.taskId`, `data.paths`, `data.model`. 样片 request is `豆包Seedance-2.5`, `draft:true`, `480p` (display name Seedance 2.5 样片). Poll `GET /v1/ai/result/{taskId}`. 成片 is only `video finalize` at 1080p; the printed cost is an estimate. Add `--yes` to pay. Never batch a final. Download video URLs immediately. Key: `WOWIDEA_API_KEY`.
+Start with `wowidea capabilities --brief`. Read `data.taskId`, `data.paths`, and `data.model` (`alias`, `upstream`, `request`). 样片 request is `豆包Seedance-2.5`, `draft:true`, `480p`. Poll `GET /v1/ai/result/{taskId}`. 成片 is only `video finalize`. A new preview exits 2; a dedupe hit exits 0; `--yes` pays once and a repeat downloads the existing file. Never batch a final. Key: `WOWIDEA_API_KEY`.

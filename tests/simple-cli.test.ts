@@ -30,7 +30,7 @@ describe('installed simple generation workflow', () => {
       res.writeHead(404); res.end('{}');
     });
     await new Promise<void>(done => server.listen(0, '127.0.0.1', done));
-    const env = { ...process.env, EASYAI_CONFIG_DIR: join(root, 'config'), EASYAI_API_KEY: 'fake-test-key', EASYAI_ACCESS_TOKEN: '', EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
+    const env = { ...process.env, WOWIDEA_API_KEY: '', EASYAI_CONFIG_DIR: join(root, 'config'), EASYAI_API_KEY: 'fake-test-key', EASYAI_ACCESS_TOKEN: '', EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
     let binary = resolve('dist/cli.js');
     const run = async (...args: string[]) => JSON.parse((await exec(process.execPath, [binary, '--json', ...args], { cwd: root, env, windowsHide: true })).stdout).data;
     try {

@@ -13,7 +13,7 @@ async function run(args: string[], env: Record<string, string>) {
     // directory exists: spawn() cannot start a process inside a missing cwd.
     const cwd = env.EASYAI_CONFIG_DIR || process.cwd();
     mkdirSync(cwd, { recursive: true });
-    const p = spawn(process.execPath, [resolve("dist/cli.js"), ...args], { env: { ...process.env, ...env }, cwd, windowsHide: true });
+    const p = spawn(process.execPath, [resolve("dist/cli.js"), ...args], { env: { ...process.env, WOWIDEA_API_KEY: "", ...env }, cwd, windowsHide: true });
     let out = "", err = ""; p.stdout.on("data", d => out += d); p.stderr.on("data", d => err += d); p.on("close", code => done({ code, out, err }));
   });
 }
@@ -71,7 +71,37 @@ describe("CLI gates with a mock website", () => {
       const result = await run(["--json", "video", "generate", "--direct", "--no-wait", "--data", JSON.stringify({ model: "Seedance-2.5-Draft", prompt: "slow push", duration: 4, aspect_ratio: "16:9", audio: false })], env);
       expect(result.code, result.err).toBe(0);
       expect(asyncHeader).toBe("true");
-      expect(posted).toMatchObject({ model: "豆包Seedance-2.5", draft: true, resolution: "480p", duration: 4, watermark: false, audio: false, content: [{ type: "text", text: "slow push" }] });
+      expect(posted).toEqual({ model: "豆包Seedance-2.5", draft: true, resolution: "480p", duration: 4, audio: false, aspect_ratio: "16:9", content: [{ type: "text", text: "slow push" }] });
+      const data = JSON.parse(result.out).data;
+      expect(data.taskId).toBe("draft-job");
+      expect(data.task_id).toBe("draft-job");
+      expect(data.model).toMatchObject({ alias: "Seedance-2.5-Draft", upstream: "doubao-seedance-2-5-260628", request: "豆包Seedance-2.5" });
+    } finally { await new Promise<void>(r => server.close(() => r())); }
+  });
+  it("downloads an existing final when finalize --yes is deduped, and a dedupe preview exits 0", async () => {
+    const server = createServer((req, res) => {
+      const base = `http://127.0.0.1:${(server.address() as any).port}`;
+      if (req.url === "/final.mp4") { res.end("final-bytes"); return; }
+      res.setHeader("Content-Type", "application/json");
+      const draft = { task_id: "draft-1", status: "success", task_status: "succeeded", data: [{ url: `${base}/final.mp4`, videoGeneration: { resultId: "draft-1:0", stage: "draft", model: "doubao-seedance-2-5-260628", resolution: "480p", finalResolutions: ["1080p"], duration: 4, finalizeExpiresAt: Date.now() + 86400000 } }] };
+      if (req.url === "/api/v1/ai/result/draft-1") { res.end(JSON.stringify(draft)); return; }
+      if (req.url === "/api/v1/ai/result/final-1") { res.end(JSON.stringify({ task_id: "final-1", status: "success", task_status: "succeeded", data: [{ url: `${base}/final.mp4` }], output: [`${base}/final.mp4`] })); return; }
+      if (req.url === "/api/v1/video/results/draft-1%3A0/finalization") { res.end(JSON.stringify({ eligible: true, existingTaskId: "final-1", targetResolutions: ["1080p"], expiresAt: Date.now() + 86400000, duration: 4 })); return; }
+      res.statusCode = 404; res.end("{}");
+    });
+    await new Promise<void>(r => server.listen(0, "127.0.0.1", r));
+    const dir = await mkdtemp(join(tmpdir(), "wowidea-final-dedupe-")); dirs.push(dir);
+    const env = { EASYAI_CONFIG_DIR: join(dir, "config"), EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
+    try {
+      const preview = await run(["--json", "video", "finalize", "draft-1"], env);
+      expect(preview.code, preview.err).toBe(0);
+      expect(JSON.parse(preview.out).data).toMatchObject({ deduped: true, submitted: false, taskId: "final-1" });
+      const paid = await run(["--json", "video", "finalize", "draft-1", "--yes", "--dir", join(dir, "out")], env);
+      expect(paid.code, paid.err).toBe(0);
+      const data = JSON.parse(paid.out).data;
+      expect(data).toMatchObject({ deduped: true, taskId: "final-1", status: "success" });
+      expect(data.paths).toHaveLength(1);
+      expect(await readFile(data.paths[0], "utf8")).toBe("final-bytes");
     } finally { await new Promise<void>(r => server.close(() => r())); }
   });
   it("prints capabilities and refuses a final prompt without calling the website", async () => {

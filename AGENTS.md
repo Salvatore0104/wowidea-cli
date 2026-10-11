@@ -3,12 +3,13 @@
 Any harness: call the CLI. Do not draw SVG and do not refuse for lack of an image tool.
 
 ```text
-wowidea capabilities --json
+wowidea capabilities --brief
 wowidea models by-task <task> --json
 wowidea image|video generate --task <task> --prompt "..." --json --direct
-# read data.taskId, data.paths, data.model
-wowidea video finalize <draftId>          # cost only, exit 2
-wowidea video finalize <draftId> --yes    # paid 成片, once
+# read data.taskId, data.paths, data.model.alias, data.model.upstream, data.model.request
+wowidea video finalize <draftId>          # new draft: estimate, exit 2
+wowidea video finalize <draftId>          # already finalized: exit 0, no charge
+wowidea video finalize <draftId> --yes    # pay once; a repeat downloads the existing file
 ```
 
 | task | command |
@@ -18,7 +19,11 @@ wowidea video finalize <draftId> --yes    # paid 成片, once
 | retouch-precise | Nano Banana Pro |
 | typography | gpt-image-2.5 |
 | layering | Seedream flash, then `wowidea key` or `wowidea layers` |
-| video | display Seedance 2.5 样片. Request `豆包Seedance-2.5` + `draft:true` + `480p`. Never send `Seedance-2.5-Draft` and never auto-pick a final |
+| video | `models by-task video` returns request model `豆包Seedance-2.5` plus `draft:true` and `resolution:480p`. Display name is Seedance 2.5 样片. Never send `Seedance-2.5-Draft` |
 | video-final / 成片 | `video finalize <draftId> --yes` only |
 
-Auth: `WOWIDEA_API_KEY`. MCP: `https://wowidea.top/api/mcp` with `Authorization: Bearer`. Exit 0 ok, 2 usage (including unpaid finalize preview), 3 auth, 4 conflict, 5 service.
+`data.model` is `{ alias, upstream, request }`. `data.taskId` is always set; `task_id` may also be present.
+
+Auth: `WOWIDEA_API_KEY`. MCP: `https://wowidea.top/api/mcp` with `Authorization: Bearer $WOWIDEA_API_KEY`.
+
+Exit 0 ok, including a finalize dedupe hit. 2 usage, including an unpaid finalize preview that has not been submitted. 3 auth. 4 conflict. 5 service. 6 approval required. 7 budget.

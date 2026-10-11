@@ -8,6 +8,7 @@ describe("redaction", () => {
     expect(JSON.stringify(value)).not.toContain("abcdefghijk");
     expect(JSON.stringify(value)).not.toContain("token=abc");
     expect(JSON.stringify(value)).not.toContain("plain-key");
+    expect(redact("Authorization: Bearer $WOWIDEA_API_KEY")).toBe("Authorization: Bearer $WOWIDEA_API_KEY");
   });
 
   it("maps conflicts to the documented exit code", () => {

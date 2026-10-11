@@ -37,6 +37,8 @@ export interface ResolvedTask {
   label: string;
   media: TaskSpec["media"];
   model: string;
+  alias: string;
+  params?: Record<string, unknown>;
   chain: string[];
   finalizeOnly: boolean;
   message?: string;
@@ -55,11 +57,18 @@ export function modelCard(alias: string): ModelCard | undefined {
   return row ? { alias, ...row } : undefined;
 }
 
-export function listTasks(): Array<{ id: string; label: string; media: string; model: string; finalizeOnly: boolean }> {
+export function listTasks(): Array<{ id: string; label: string; media: string; model: string; alias: string; params?: { draft: boolean; resolution: string }; finalizeOnly: boolean }> {
   const table = routingTable();
-  return Object.entries(table.tasks).map(([id, task]) => ({
-    id, label: task.label, media: task.media, model: task.models[0] || "", finalizeOnly: Boolean(task.finalizeOnly),
-  }));
+  return Object.entries(table.tasks).map(([id, task]) => {
+    const alias = task.models[0] || "";
+    const card = modelCard(alias);
+    return {
+      id, label: task.label, media: task.media, alias,
+      model: card?.requestModel || alias,
+      ...(card?.draft ? { params: { draft: true, resolution: "480p" } } : {}),
+      finalizeOnly: Boolean(task.finalizeOnly),
+    };
+  });
 }
 
 function canonicalTask(task: string): string {
@@ -123,9 +132,17 @@ export function applyDraftContract(payload: Record<string, unknown>, selectedId?
     duration,
     aspect_ratio: payload.aspect_ratio || "16:9",
     audio: payload.audio ?? false,
-    watermark: false,
     ...(content.length ? { content } : {}),
   };
+}
+
+const DRAFT_WIRE_FIELDS = ["model", "content", "draft", "resolution", "duration", "aspect_ratio", "audio"] as const;
+
+export function seedanceWirePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  if (payload.draft !== true || String(payload.model || "") !== DRAFT_REQUEST_MODEL) return payload;
+  const body: Record<string, unknown> = {};
+  for (const key of DRAFT_WIRE_FIELDS) if (payload[key] !== undefined) body[key] = payload[key];
+  return body;
 }
 
 export function canFallback(error: unknown): boolean {
@@ -141,7 +158,7 @@ export function resolveTask(task: string, options: { fast?: boolean; stage?: str
   if (spec.finalizeOnly || (spec.media === "video" && options.stage === "final")) {
     const model = table.defaults.videoFinal;
     return {
-      task: "video-final", label: table.tasks["video-final"]!.label, media: "video", model, chain: [],
+      task: "video-final", label: table.tasks["video-final"]!.label, media: "video", model, alias: model, chain: [],
       finalizeOnly: true, source: "table", entries: [modelCard(model)!].filter(Boolean),
       message: "成片不会重新提交提示词。先生成样片，再运行 wowidea video finalize <draftId> --yes。",
       command: "wowidea video finalize <draftId> --yes",
@@ -159,10 +176,13 @@ export function resolveTask(task: string, options: { fast?: boolean; stage?: str
     if (live.length) { chain = live; source = "live"; }
     else source = "static-fallback";
   }
-  const model = chain[0] || primary;
+  const alias = chain[0] || primary;
+  const card = modelCard(alias);
+  const model = card?.requestModel || alias;
+  const params = card?.draft ? { draft: true, resolution: "480p" } : undefined;
   return {
-    task: id, label: spec.label, media: spec.media, model, chain, finalizeOnly: false, source,
-    entries: chain.map(alias => modelCard(alias)).filter((row): row is ModelCard => Boolean(row)),
+    task: id, label: spec.label, media: spec.media, model, alias, params, chain, finalizeOnly: false, source,
+    entries: chain.map(name => modelCard(name)).filter((row): row is ModelCard => Boolean(row)),
   };
 }
 

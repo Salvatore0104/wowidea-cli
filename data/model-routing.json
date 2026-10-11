@@ -117,7 +117,7 @@
     },
     "Nano Banana 2": {
       "display": "Nano Banana 2",
-      "upstream": "gemini-3.1-flash-image-preview",
+      "upstream": "nano-banana-2-ext",
       "purposes": ["retouch", "edit", "general"],
       "quality": "high",
       "speed": "fast",
@@ -127,7 +127,7 @@
     },
     "Nano Banana 2 Lite": {
       "display": "Nano Banana 2 Lite",
-      "upstream": "nano-banana-2-lite",
+      "upstream": "nano-banana-2-lite-ext",
       "purposes": ["retouch", "edit"],
       "quality": "standard",
       "speed": "fast",
@@ -300,7 +300,7 @@
     },
     "Google Omni": {
       "display": "Google Omni",
-      "upstream": "google-omni",
+      "upstream": "video_google_omni",
       "purposes": ["video"],
       "quality": "high",
       "speed": "medium",

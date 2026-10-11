@@ -48,8 +48,9 @@
     {
       "alias": "Nano Banana 2",
       "display": "Nano Banana 2",
-      "upstream": "gemini-3.1-flash-image-preview",
+      "upstream": "nano-banana-2-ext",
       "upstreams": [
+        "nano-banana-2-ext",
         "gemini-3.1-flash-image-preview",
         "gemini-3.1-flash-image",
         "nano-banana-2-cl",
@@ -261,8 +262,9 @@
     {
       "alias": "Google Omni",
       "display": "Google Omni",
-      "upstream": "google-omni",
+      "upstream": "video_google_omni",
       "upstreams": [
+        "video_google_omni",
         "google-omni"
       ],
       "types": [
@@ -275,8 +277,9 @@
     {
       "alias": "Nano Banana 2 Lite",
       "display": "Nano Banana 2 Lite",
-      "upstream": "nano-banana-2-lite",
+      "upstream": "nano-banana-2-lite-ext",
       "upstreams": [
+        "nano-banana-2-lite-ext",
         "nano-banana-2-lite"
       ],
       "types": [

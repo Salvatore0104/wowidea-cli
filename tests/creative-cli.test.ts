@@ -10,7 +10,7 @@ afterEach(async () => { for (const dir of dirs.splice(0)) await rm(dir, { recurs
 
 function runCli(args: string[], env: Record<string, string>, cwd: string) {
   return new Promise<{ code: number | null; out: string; err: string }>(done => {
-    const p = spawn(process.execPath, [resolve("dist/cli.js"), ...args], { env: { ...process.env, ...env }, cwd, windowsHide: true });
+    const p = spawn(process.execPath, [resolve("dist/cli.js"), ...args], { env: { ...process.env, WOWIDEA_API_KEY: "", ...env }, cwd, windowsHide: true });
     let out = "", err = "";
     p.stdout.on("data", d => out += d);
     p.stderr.on("data", d => err += d);

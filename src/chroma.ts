@@ -8,6 +8,7 @@ export interface KeyOptions {
   erode?: number;
   feather?: number;
   preferNative?: boolean;
+  metric?: "rgb" | "chroma";
 }
 
 const NAMED: Record<string, [number, number, number]> = {
@@ -33,6 +34,47 @@ export function toHex([r, g, b]: [number, number, number]): string {
 export function colorDistance(a: [number, number, number], b: [number, number, number]): number {
   const dr = a[0] - b[0], dg = a[1] - b[1], db = a[2] - b[2];
   return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+function chromaChannels([r, g, b]: [number, number, number]): [number, number] {
+  const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+  const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+  return [cb, cr];
+}
+
+export function chromaDistance(a: [number, number, number], b: [number, number, number]): number {
+  const [cb1, cr1] = chromaChannels(a), [cb2, cr2] = chromaChannels(b);
+  return Math.hypot(cb1 - cb2, cr1 - cr2);
+}
+
+function hueSatValue([r, g, b]: [number, number, number]): { h: number; s: number; v: number } {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), span = max - min;
+  const v = max / 255;
+  const s = max === 0 ? 0 : span / max;
+  let h = 0;
+  if (span !== 0) {
+    if (max === r) h = ((g - b) / span) % 6;
+    else if (max === g) h = (b - r) / span + 2;
+    else h = (r - g) / span + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s, v };
+}
+
+function hueDelta(a: number, b: number): number {
+  const delta = Math.abs(a - b) % 360;
+  return delta > 180 ? 360 - delta : delta;
+}
+
+function chromaMatte(pixel: [number, number, number], key: [number, number, number], similarity: number, softness: number): number {
+  const pixelHsv = hueSatValue(pixel), keyHsv = hueSatValue(key);
+  if (pixelHsv.s >= 0.18 && hueDelta(pixelHsv.h, keyHsv.h) > 22) return 1;
+  if (pixelHsv.v < 0.45 && pixelHsv.s < 0.85) return 1;
+  const distance = chromaDistance(pixel, key);
+  if (distance <= similarity) return 0;
+  if (distance >= similarity + softness) return 1;
+  return (distance - similarity) / softness;
 }
 
 export function chooseKeyHex(prompt = ""): string {
@@ -116,8 +158,9 @@ function despill(rgb: [number, number, number], key: [number, number, number], a
 }
 
 export function keyRaw(source: Uint8Array, width: number, height: number, key: [number, number, number], options: KeyOptions = {}): Uint8Array {
-  const similarity = options.similarity ?? 52;
-  const softness = options.softness ?? 88;
+  const metric = options.metric ?? "rgb";
+  const similarity = options.similarity ?? (metric === "chroma" ? 14 : 52);
+  const softness = options.softness ?? (metric === "chroma" ? 10 : 88);
   const amount = options.despill ?? 1;
   const erode = options.erode ?? 1;
   const feather = options.feather ?? 1;
@@ -125,8 +168,9 @@ export function keyRaw(source: Uint8Array, width: number, height: number, key: [
   const rgb = new Uint8Array(width * height * 3);
   for (let i = 0; i < width * height; i++) {
     const pixel: [number, number, number] = [source[i * 4]!, source[i * 4 + 1]!, source[i * 4 + 2]!];
-    const distance = colorDistance(pixel, key);
-    const matte = distance <= similarity ? 0 : distance >= similarity + softness ? 1 : (distance - similarity) / softness;
+    const matte = metric === "chroma"
+      ? chromaMatte(pixel, key, similarity, softness)
+      : (() => { const distance = colorDistance(pixel, key); return distance <= similarity ? 0 : distance >= similarity + softness ? 1 : (distance - similarity) / softness; })();
     const cleaned = despill(pixel, key, Math.round(matte * 255), amount);
     rgb[i * 3] = cleaned[0]; rgb[i * 3 + 1] = cleaned[1]; rgb[i * 3 + 2] = cleaned[2];
     alpha[i] = matte * (source[i * 4 + 3]! / 255);
@@ -178,7 +222,7 @@ export async function keyImage(input: Buffer | string, options: KeyOptions = {})
   }
   const auto = !options.key || options.key === "auto";
   const key = auto ? pickKeyColor(pixels, info.width, info.height) : parseHex(options.key || "#00FF00");
-  const keyed = keyRaw(pixels, info.width, info.height, key, auto ? { similarity: 78, softness: 120, ...options } : options);
+  const keyed = keyRaw(pixels, info.width, info.height, key, auto ? { ...options, metric: "chroma", similarity: options.similarity ?? 14, softness: options.softness ?? 10 } : { ...options, metric: "rgb" });
   const png = await sharp(Buffer.from(keyed), { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
   return { png, key: toHex(key), method: "chroma", width: info.width, height: info.height };
 }

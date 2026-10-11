@@ -122,3 +122,22 @@ export function validateCapabilities(selected: ReturnType<typeof routeModel>, pa
   }
   return payload;
 }
+
+export function compactModelRow(row: any): { id: string; alias: string; types: string[]; upstream: string } {
+  const entry = registryEntry(row);
+  const id = String(row?.id || row?.model || row?.name || "");
+  return { id, alias: entry?.id || id, types: modelTypes(row), upstream: String(row?.modelName || row?.upstream || entry?.modelName || "") };
+}
+
+export function formatModelGroups(rows: any[]): string {
+  const groups = new Map<string, string[]>();
+  for (const row of rows) {
+    const item = compactModelRow(row);
+    const group = item.types.some(type => type.startsWith("image")) ? "image" : item.types.some(type => type.includes("video")) ? "video" : (item.types[0] || "other");
+    const list = groups.get(group) || [];
+    if (item.id && !list.includes(item.id)) list.push(item.id);
+    groups.set(group, list);
+  }
+  const order = ["image", "video", ...[...groups.keys()].filter(name => name !== "image" && name !== "video")];
+  return order.filter(name => groups.get(name)?.length).map(name => `${name}\n${groups.get(name)!.map(id => `  ${id}`).join("\n")}`).join("\n");
+}
