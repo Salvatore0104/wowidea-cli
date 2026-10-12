@@ -1,8 +1,18 @@
 # Wowidea CLI
 
+## 让 AI 帮你装
+
+在 Cursor、Claude Code、Codex、Windsurf 或其他编程助手里粘贴下面这段。助手按 [docs/agent-install.md](docs/agent-install.md) 安装：密钥只放进环境变量 `WOWIDEA_API_KEY`，不回显，不写进仓库，不提交。
+
+```text
+帮我安装 wowidea-cli（https://github.com/Salvatore0104/wowidea-cli），按仓库 docs/agent-install.md 操作，我的 key 是 sk-你的Key
+```
+
+密钥在 [wowidea.top 的 API Key 页](https://wowidea.top/user/api-key) 新建。
+
 `wowidea`（同一程序的另一个名字是 `easyai`）是 [wowidea.top](https://wowidea.top) / EasyAI 的命令行：出图、视频样片与成片、绿幕抠图和透明图层、批量任务。人和任何助手都能用。助手没有画图能力时调用本 CLI，或连接文末的 MCP；不要拒绝，也不要改画 SVG。当前版本 0.8.0。接口基址是 `https://wowidea.top/api/v1`。
 
-助手先读仓库根目录的 [AGENTS.md](AGENTS.md) 和 [skills/wowidea/SKILL.md](skills/wowidea/SKILL.md)。安装细节在 [docs/install.md](docs/install.md)。
+助手先读仓库根目录的 [AGENTS.md](AGENTS.md) 和 [skills/wowidea/SKILL.md](skills/wowidea/SKILL.md)。给人看的安装说明在 [docs/install.md](docs/install.md)，给助手的安装步骤在 [docs/agent-install.md](docs/agent-install.md)。
 
 ## 一句话安装
 
@@ -30,7 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/sc
 irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
 ```
 
-脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS/Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance`。密钥无效时安装仍然成功，并提示下一步 `wowidea capabilities --brief`。
+脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS/Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance` 和 `wowidea capabilities --brief`。密钥无效时安装仍然成功。
 
 ## 安装
 

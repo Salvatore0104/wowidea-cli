@@ -218,6 +218,7 @@ tty_ok() {
 }
 
 read_key() {
+  # Agents have no TTY. A set WOWIDEA_API_KEY must not open /dev/tty or read stdin.
   if [[ -n "${WOWIDEA_API_KEY:-}" ]]; then
     KEY="${WOWIDEA_API_KEY}"
   elif tty_ok; then
@@ -425,6 +426,18 @@ verify_balance() {
   return 0
 }
 
+verify_brief() {
+  local out status
+  out="$(mktmp)"
+  printf '%s\n' "正在运行 wowidea capabilities --brief ..."
+  status=0
+  wowidea capabilities --brief </dev/null >"$out" 2>&1 || status=$?
+  redact_stream <"$out"
+  if [[ "$status" -ne 0 ]]; then
+    die "wowidea capabilities --brief 失败（退出码 ${status}）。命令行未就绪。" 1
+  fi
+}
+
 main() {
   require_tools
   sync_repo
@@ -432,7 +445,8 @@ main() {
   install_cli
   configure_key
   verify_balance
-  printf '%s\n' "下一步：wowidea capabilities --brief"
+  verify_brief
+  printf '%s\n' "安装完成。"
   cleanup
 }
 

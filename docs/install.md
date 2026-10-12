@@ -1,6 +1,6 @@
 # 安装与维护
 
-日常命令、路由表和 JSON 字段见 [README](../README.md)。本文只覆盖装上、配密钥、接入助手和排错。命令与 `wowidea --help`、`wowidea capabilities --brief` 一致。
+日常命令、路由表和 JSON 字段见 [README](../README.md)。本文只覆盖装上、配密钥、接入助手和排错。命令与 `wowidea --help`、`wowidea capabilities --brief` 一致。编程助手（Cursor、Claude Code、Codex、Windsurf）按 [agent-install.md](agent-install.md) 安装，不要把密钥写进仓库。
 
 ## 一句话安装
 
@@ -30,7 +30,7 @@ irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/i
 
 密钥优先用 `wowidea auth use-key --key-stdin` 写入系统钥匙串（可选依赖 `keytar`）。钥匙串不可用时，macOS/Linux 把 `export WOWIDEA_API_KEY=...` 追加到 `~/.bashrc` 和 `~/.zshrc`（已存在才写 `~/.bash_profile`，避免新建后挡住 `~/.profile`）。已有非本脚本管理的赋值会保留，不重复追加。文件若是符号链接，或组/其他用户可写，则拒绝写入。写入后会去掉组和其他用户的读权限。Windows 在钥匙串不可用时用 `setx WOWIDEA_API_KEY` 写入当前用户环境变量。脚本不会把密钥打出来。
 
-装完运行 `wowidea balance`。认证失败（退出码 3）或服务不可用时，安装仍算成功，并提示下一步 `wowidea capabilities --brief`。
+装完运行 `wowidea balance` 和 `wowidea capabilities --brief`。认证失败（退出码 3）或服务不可用时，安装仍算成功。`capabilities --brief` 失败则安装不算完成。
 
 ## 环境
 

@@ -163,7 +163,13 @@ function Install-Cli {
 }
 
 function Read-WowideaKey {
+  # Agents have no TTY. A set WOWIDEA_API_KEY must not call Read-Host.
   if ($env:WOWIDEA_API_KEY) { return $env:WOWIDEA_API_KEY }
+  $redirected = $false
+  try { $redirected = [Console]::IsInputRedirected } catch { $redirected = $false }
+  if ($redirected) {
+    Fail "未设置 WOWIDEA_API_KEY，且当前没有交互终端。请先设置 `$env:WOWIDEA_API_KEY 再运行。"
+  }
   try {
     Write-Host "请输入 WOWIDEA_API_KEY（输入不回显）：" -NoNewline
     $secure = Read-Host -AsSecureString
@@ -314,6 +320,32 @@ function Invoke-Balance([string]$Key) {
   }
 }
 
+function Invoke-Capabilities([string]$Key) {
+  Write-Host "正在运行 wowidea capabilities --brief ..."
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = 'cmd.exe'
+  $psi.Arguments = '/d /c wowidea capabilities --brief'
+  $psi.UseShellExecute = $false
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.CreateNoWindow = $true
+  $utf8 = New-Object System.Text.UTF8Encoding $false
+  $psi.StandardOutputEncoding = $utf8
+  $psi.StandardErrorEncoding = $utf8
+  $proc = New-Object System.Diagnostics.Process
+  $proc.StartInfo = $psi
+  [void]$proc.Start()
+  $stdout = $proc.StandardOutput.ReadToEnd()
+  $stderr = $proc.StandardError.ReadToEnd()
+  $proc.WaitForExit()
+  $text = $stdout + $stderr
+  if ($Key -and $text.Contains($Key)) { $text = $text.Replace($Key, '[REDACTED]') }
+  if ($text.Trim()) { Write-Host $text.TrimEnd() }
+  if ($proc.ExitCode -ne 0) {
+    Fail "wowidea capabilities --brief 失败（退出码 $($proc.ExitCode)）。命令行未就绪。" 1
+  }
+}
+
 $repo = if ($env:WOWIDEA_CLI_REPO) { $env:WOWIDEA_CLI_REPO } elseif ($env:EASYAI_CLI_REPO) { $env:EASYAI_CLI_REPO } else { 'https://github.com/Salvatore0104/wowidea-cli.git' }
 $ref = if ($env:WOWIDEA_CLI_REF) { $env:WOWIDEA_CLI_REF } elseif ($env:EASYAI_CLI_REF) { $env:EASYAI_CLI_REF } else { 'master' }
 $dest = if ($env:WOWIDEA_CLI_HOME) { $env:WOWIDEA_CLI_HOME } else { Join-Path $env:USERPROFILE '.wowidea-cli' }
@@ -336,7 +368,8 @@ try {
     Write-Host "这次安装会在当前窗口用该密钥检查余额。setx 要新开窗口才对其他程序可见。"
   }
   Invoke-Balance $script:ApiKey
-  Write-Host "下一步：wowidea capabilities --brief"
+  Invoke-Capabilities $script:ApiKey
+  Write-Host "安装完成。"
 } finally {
   $script:ApiKey = $null
   $ErrorActionPreference = $previousErrorAction
