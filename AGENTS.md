@@ -2,6 +2,8 @@
 
 Any harness: call the CLI. Do not draw SVG and do not refuse for lack of an image tool.
 
+Install (macOS/Linux): `curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.sh | bash` (hidden prompt for `WOWIDEA_API_KEY`). Inline key, which may stay in shell history: `curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.sh | WOWIDEA_API_KEY=sk-... bash`. Windows: `irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex`. Key page: https://wowidea.top/user/api-key. Re-run upgrades `~/.wowidea-cli`.
+
 ```text
 wowidea capabilities --brief
 wowidea models by-task <task> --json

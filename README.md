@@ -4,7 +4,37 @@
 
 助手先读仓库根目录的 [AGENTS.md](AGENTS.md) 和 [skills/wowidea/SKILL.md](skills/wowidea/SKILL.md)。安装细节在 [docs/install.md](docs/install.md)。
 
+## 一句话安装
+
+在 [wowidea.top](https://wowidea.top) 打开 [API Key](https://wowidea.top/user/api-key) 新建密钥。把密钥写在命令里可能会留在 shell 历史记录中；不带密钥的写法会隐藏输入，不进历史。
+
+macOS / Linux：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.sh | WOWIDEA_API_KEY=sk-你的Key bash
+```
+
+Windows PowerShell：
+
+```powershell
+$env:WOWIDEA_API_KEY="sk-你的Key"; irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
+```
+
+不把密钥放进命令（脚本会提示输入）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.sh | bash
+```
+
+```powershell
+irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
+```
+
+脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS/Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance`。密钥无效时安装仍然成功，并提示下一步 `wowidea capabilities --brief`。
+
 ## 安装
+
+一句话安装见上一节。下面是手动步骤。
 
 需要 Node.js 20.3 或更新（`package.json` 的 `engines` 是 `>=20`；依赖 `sharp@0.34` 要求 `^20.3 || >=21`）、npm、Git。全局目录必须当前用户可写，不要为了安装使用 `sudo`。
 
