@@ -1,0 +1,6 @@
+# Wowidea CLI
+
+- Install (coding agents): docs/agent-install.md
+- Harness card: AGENTS.md
+- Human install notes: docs/install.md
+- Product readme: README.md

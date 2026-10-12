@@ -1,6 +1,36 @@
 # 安装与维护
 
-日常命令、路由表和 JSON 字段见 [README](../README.md)。本文只覆盖装上、配密钥、接入助手和排错。命令与 `wowidea --help`、`wowidea capabilities --brief` 一致。
+日常命令、路由表和 JSON 字段见 [README](../README.md)。本文只覆盖装上、配密钥、接入助手和排错。命令与 `wowidea --help`、`wowidea capabilities --brief` 一致。编程助手（Cursor、Claude Code、Codex、Windsurf）按 [agent-install.md](agent-install.md) 安装，不要把密钥写进仓库。
+
+## 一句话安装
+
+密钥在 [wowidea.top](https://wowidea.top) 的 [API Key](https://wowidea.top/user/api-key) 页新建。写在命令里可能留在 shell 历史里；省略密钥时脚本会隐藏输入。
+
+macOS / Linux：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.sh | WOWIDEA_API_KEY=sk-你的Key bash
+```
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.sh | bash
+```
+
+Windows PowerShell：
+
+```powershell
+$env:WOWIDEA_API_KEY="sk-你的Key"; irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
+```
+
+```powershell
+irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
+```
+
+`scripts/install.sh` 和 `scripts/install.ps1` 把仓库固定在 `~/.wowidea-cli`（Windows 是 `%USERPROFILE%\.wowidea-cli`）。已有仓库就拉取更新，所以再跑一次就是升级。然后 `npm ci`、`npm run build`、`npm link`；全局目录不可写时 `npm pack` 再装进 `~/.local`，不使用 sudo。
+
+密钥优先用 `wowidea auth use-key --key-stdin` 写入系统钥匙串（可选依赖 `keytar`）。钥匙串不可用时，macOS/Linux 把 `export WOWIDEA_API_KEY=...` 追加到 `~/.bashrc` 和 `~/.zshrc`（已存在才写 `~/.bash_profile`，避免新建后挡住 `~/.profile`）。已有非本脚本管理的赋值会保留，不重复追加。文件若是符号链接，或组/其他用户可写，则拒绝写入。写入后会去掉组和其他用户的读权限。Windows 在钥匙串不可用时用 `setx WOWIDEA_API_KEY` 写入当前用户环境变量。脚本不会把密钥打出来。
+
+装完运行 `wowidea balance` 和 `wowidea capabilities --brief`。认证失败（退出码 3）或服务不可用时，安装仍算成功。`capabilities --brief` 失败则安装不算完成。
 
 ## 环境
 
@@ -37,7 +67,7 @@ Windows 用户目录示例：`npm install -g .\easyai-cli-0.8.0.tgz --prefix "$e
 
 不要运行 `npm install -g github:Salvatore0104/wowidea-cli`。`dist/` 被 gitignore，仓库没有 `prepare`，安装结果里没有 `dist/cli.js`。给 `prepare` 接上 `npm run build` 也不能修好：那个脚本执行时，开发依赖 `tsup` 还不在 PATH 上。
 
-仓库里的 `scripts/install-macos.sh` 和 `scripts/install-windows.ps1` 做的是同一套克隆、`npm ci`、`npm run build`、`npm pack`、再全局安装压缩包，并调用 `scripts/install-skills.mjs`。需要看清每一步时，用上面的克隆命令。
+仓库里的 `scripts/install.sh` 和 `scripts/install.ps1` 是上面的一句话安装。`scripts/install-macos.sh` 和 `scripts/install-windows.ps1` 仍用临时目录：`npm ci`、`npm run build`、`npm pack`、再全局安装压缩包，并调用 `scripts/install-skills.mjs`。需要看清每一步时，用上面的克隆命令。
 
 ## 升级与卸载
 
