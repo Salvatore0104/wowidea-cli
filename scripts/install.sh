@@ -130,7 +130,8 @@ quote_single() {
 # ~/.bash_profile would stop bash from reading ~/.profile).
 persist_path_line() {
   local bin_dir="$1"
-  local file line quoted old_umask
+  local file line quoted old_umask changed
+  changed=0
   [[ -n "$bin_dir" ]] || return 0
   case ":${ORIGINAL_PATH}:" in
     *":${bin_dir}:"*) return 0 ;;
@@ -150,6 +151,7 @@ persist_path_line() {
       umask 077
       printf '%s\n%s\n' "# wowidea-cli: PATH (managed by scripts/install.sh)" "$line" >"$file"
       umask "$old_umask"
+      changed=1
       continue
     fi
     if [[ -f "$file" ]] && grep -F -q -- "$bin_dir" "$file"; then
@@ -157,9 +159,12 @@ persist_path_line() {
     fi
     if [[ -f "$file" ]]; then
       printf '\n%s\n%s\n' "# wowidea-cli: PATH (managed by scripts/install.sh)" "$line" >>"$file"
+      changed=1
     fi
   done
-  printf '%s\n' "已把 ${bin_dir} 加入 shell 启动文件的 PATH。新开终端后生效。"
+  if [[ "$changed" -eq 1 ]]; then
+    printf '%s\n' "已把 ${bin_dir} 加入 shell 启动文件的 PATH。新开终端后生效。"
+  fi
 }
 
 install_user_prefix() {
@@ -206,10 +211,16 @@ install_cli() {
   printf '%s\n' "已安装：$(command -v wowidea)（$(wowidea --version </dev/null)）"
 }
 
+# -r /dev/tty stays true when the device node exists but this process has no
+# controlling terminal. Opening it is the check that matches the later prompt.
+tty_ok() {
+  { : >/dev/tty; } 2>/dev/null
+}
+
 read_key() {
   if [[ -n "${WOWIDEA_API_KEY:-}" ]]; then
     KEY="${WOWIDEA_API_KEY}"
-  elif [[ -r /dev/tty ]]; then
+  elif tty_ok; then
     printf '%s' "请输入 WOWIDEA_API_KEY（输入不回显）：" >/dev/tty
     IFS= read -r -s KEY </dev/tty || true
     printf '\n' >/dev/tty
