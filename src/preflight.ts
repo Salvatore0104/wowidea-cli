@@ -6,7 +6,7 @@ import { CliError, ExitCode } from "./errors.js";
 
 /* legacy payload binding utilities */
 export interface Quote {
-  quoteId: string; kind: "image" | "video" | "canvas"; payloadHash: string; payload: Record<string, unknown>;
+  quoteId: string; kind: "image" | "video"; payloadHash: string; payload: Record<string, unknown>;
   estimatedCost: number | null; currency: string; createdAt: string; expiresAt: string; source: "server" | "local";
   serverQuoteId?: string; scope?: string; submissionPath?: string;
 }

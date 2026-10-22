@@ -20,9 +20,9 @@ Skill 指令为英文，默认仍用用户语言交流。`$wowidea` 是媒体执
 
 ## 项目与执行
 
-生成任务先用 `project setup` 创建或验证目录的专属远端画布。`.wowidea/canvas.json` 只保存精确项目 ID、名称、固定 BaseURL 和 profile。`project canvas bind|switch` 只接受用户明确指定的已有项目 ID，不按名称猜测。完整节点、资产、连线、分组、模板、执行和协作命令由 `easyai-canvas` 提供。
+每次在一个目录里生成图片或视频之前，先运行 `wowidea project init --dir <目录> --name <名称>`。已有 `.wowidea/project.json` 时不要再次 init。`project setup` 会复制技能并在缺少项目文件时一并初始化。
 
-生成可直接使用 `--prompt`、`--model`、`--reference`、`--resolution`、`--ratio` 等参数，也可以使用 UTF-8 请求文件，两种输入方式不可混用。默认在画布新建来源和生成节点，按实时槽位连接，执行一次并下载。`--direct` 仅用于明确兼容旧脚本。Canvas 中断恢复只查询记录里的同一项目级 task ID。Seedance 必须使用当前批准的 storyboard manifest。
+生成可直接使用 `--prompt`、`--model`、`--reference`、`--resolution`、`--ratio` 等参数，也可以使用 UTF-8 请求文件，两种输入方式不可混用。生成默认走直接接口，不必加 `--direct`。中断后用 `tasks resume` 或 `image|video status|watch|download` 查询同一任务。Seedance 成片只用 `video finalize`。
 
 任务查看分两处：`tasks list`只读本机提交记录，用于恢复和防重复；`tasks remote --page 1 --page-size 20`读取服务器上当前账号的任务，是真正意义上的历史列表。`models list --type image|video`只列出能产出该媒体的模型，过滤在本地完成（平台会忽略 `?type=` 参数），需要平台原始类型时可直接传如 `image_analysis`。`models show <id>` 同时接受平台 id 与随包显示名，例如 `mj-v8.2` 和 `Midjourney v8.2` 都指向同一模型。
 

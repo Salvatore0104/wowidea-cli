@@ -1,6 +1,6 @@
 ---
 name: easyai
-description: Compatibility entry for EasyAI account, media tasks and infinite canvas through the installed Wowidea CLI. Creative image and video work uses the bundled Wowidea Skill.
+description: Compatibility entry for EasyAI account and media tasks through the installed Wowidea CLI. Creative image and video work uses the bundled Wowidea Skill.
 ---
 
 # EasyAI compatibility entry

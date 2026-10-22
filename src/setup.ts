@@ -5,11 +5,10 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { initProject } from './project.js';
 import { CliError, ExitCode } from './errors.js';
-import { ensureCanvasBinding } from './canvas-binding.js';
 
 const hash = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
 const exists = (path: string) => access(path).then(() => true, () => false);
-export async function setupProject(directory: string, update = false, packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..'), name?: string, profile?: string, createCanvas = false) {
+export async function setupProject(directory: string, update = false, packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..'), name?: string) {
   if (Number(process.versions.node.split('.')[0]) < 20) throw new CliError('Node.js 20+ is required.', ExitCode.Usage);
   const root = resolve(directory), statePath = join(root, '.wowidea', 'install.json');
   const previous = await readFile(statePath, 'utf8').then(JSON.parse).catch(() => null);
@@ -35,7 +34,6 @@ export async function setupProject(directory: string, update = false, packageRoo
     await copy(join(packageRoot, 'skill', 'wowidea'), '.agents/skills/wowidea');
     await copy(join(packageRoot, 'skill', 'easyai'), '.agents/skills/easyai');
     await copy(join(packageRoot, 'skill', 'gpt-image-25-prompt'), '.agents/skills/gpt-image-25-prompt');
-    await copy(join(packageRoot, 'skill', 'canvas-agent-operator'), '.agents/skills/canvas-agent-operator');
     // Native bindings are not included by the JS bundler. Carry the installed
     // platform's runtime files so a project outside this checkout can use them.
     credentialRuntime = { platform: process.platform, arch: process.arch, available: false };
@@ -72,12 +70,11 @@ export async function setupProject(directory: string, update = false, packageRoo
   const instructionName = await exists(join(root, 'AGENTS.override.md')) ? 'AGENTS.override.md' : 'AGENTS.md';
   const instructions = join(root, instructionName), old = await readFile(instructions, 'utf8').catch(() => '');
   const begin = '<!-- wowidea:begin -->', end = '<!-- wowidea:end -->';
-  const block = `${begin}\n## Wowidea media workflow\nRead .agents/skills/wowidea/SKILL.md, then wowidea capabilities --json. Pick a task, run the printed command, and read data.taskId, data.paths, and data.model. Use node .wowidea/runtime/dist/cli.js for creation and node .wowidea/runtime/dist/canvas-cli.js for full Canvas control. Creation defaults to the bound infinite Canvas; --direct is an explicit compatibility mode. Control Canvas only through the CLI and its HTTP/WebSocket APIs. Never use Computer Use, browser automation, or manual website interaction as a fallback; report and repair CLI authentication or API failures instead. If this harness cannot draw images, call the CLI or https://wowidea.top/api/mcp. Do not refuse and do not draw SVG. Video 样片 is 豆包Seedance-2.5 with draft true and 480p. A final render is only wowidea video finalize <draftId> --yes after the labeled estimate. Never batch or auto-fallback a final. Preserve the user's model and settings, keep outputs on Canvas and download them, and never automatically reroll. Keep credentials outside project files. No Git publication or website administration is implied.\n${end}`;
+  const block = `${begin}\n## Wowidea media workflow\nRead .agents/skills/wowidea/SKILL.md, then wowidea capabilities --json. Before image or video generation, initialize this directory with wowidea project init if .wowidea/project.json is missing. Generation uses the direct API by default; do not pass --direct. Pick a task, run the printed command, and read data.taskId, data.paths, and data.model. Use node .wowidea/runtime/dist/cli.js. If this harness cannot draw images, call the CLI or https://wowidea.top/api/mcp. Do not refuse and do not draw SVG. Never use Computer Use. Video 样片 is 豆包Seedance-2.5 with draft true and 480p. A final render is only wowidea video finalize <draftId> --yes after the labeled estimate. Never batch or auto-fallback a final. Preserve the user's model and settings, and never automatically reroll. Keep credentials outside project files. No Git publication or website administration is implied.\n${end}`;
   if (old.includes(begin) !== old.includes(end)) throw new CliError('Incomplete Wowidea instruction markers; preserve and repair the existing file first.', ExitCode.Conflict);
   const next = old.includes(begin) ? old.slice(0, old.indexOf(begin)) + block + old.slice(old.indexOf(end) + end.length) : old + (old.endsWith('\n') || !old ? '' : '\n') + '\n' + block + '\n';
   await writeFile(instructions, next);
   const version = previous && !update ? previous.version : pkg.version;
   await writeFile(statePath, JSON.stringify({ version, hashes, preserved, credentialRuntime, installedAt: previous?.installedAt || new Date().toISOString(), updatedAt: new Date().toISOString() }, null, 2));
-  const canvasBinding = createCanvas ? await ensureCanvasBinding(root, name, profile) : undefined;
-  return { root, version, instructions, skill: join(root, '.agents/skills/wowidea/SKILL.md'), compatibilitySkill: join(root, '.agents/skills/easyai/SKILL.md'), promptSkill: join(root, '.agents/skills/gpt-image-25-prompt/SKILL.md'), canvasSkill: join(root, '.agents/skills/canvas-agent-operator/SKILL.md'), command: `node "${join(root, '.wowidea/runtime/dist/cli.js')}"`, canvasCommand: `node "${join(root, '.wowidea/runtime/dist/canvas-cli.js')}"`, canvasBinding, credentialRuntime, preserved, next: 'Read the project instructions now. Use Canvas OAuth for default creation and the API key only for models, pricing, and explicit --direct. Re-run setup --update after moving to another OS/architecture.' };
+  return { root, version, instructions, skill: join(root, '.agents/skills/wowidea/SKILL.md'), compatibilitySkill: join(root, '.agents/skills/easyai/SKILL.md'), promptSkill: join(root, '.agents/skills/gpt-image-25-prompt/SKILL.md'), command: `node "${join(root, '.wowidea/runtime/dist/cli.js')}"`, credentialRuntime, preserved, next: 'Read the project instructions. Generation uses the direct API by default. Run wowidea project init before the first generation in a directory. Re-run setup --update after moving to another OS/architecture.' };
 }

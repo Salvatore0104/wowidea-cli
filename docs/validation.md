@@ -2,7 +2,9 @@
 
 ## 0.7.0 无限画布验收（2026-09-15）
 
-CLI 已改用官方 `@easyaigc/canvas-cli@0.5.0` 和 `canvas-agent-operator@1.3.0`。独立 OAuth 会话取得 `canvas:read/write/execute/collaborate` scope；本地元数据文件经检查不含 access/refresh token。真实网站保留专用项目 `Wowidea CLI 画布验收 2026-09-15`，完成节点创建、修改、移动、文件上传、引用绑定/解绑、连线增删、分组/解组、个人模板创建/导入、资产增删和 WebSocket 协作监听。
+下面这段是当时的验收记录。无限画布接管（`easyai-canvas`、`canvas-agent-operator`、`project canvas`）已经从当前 CLI 移除。生成默认走直接接口。
+
+当时 CLI 使用官方 `@easyaigc/canvas-cli@0.5.0` 和 `canvas-agent-operator@1.3.0`。独立 OAuth 会话取得 `canvas:read/write/execute/collaborate` scope；本地元数据文件经检查不含 access/refresh token。真实网站保留专用项目 `Wowidea CLI 画布验收 2026-09-15`，完成节点创建、修改、移动、文件上传、引用绑定/解绑、连线增删、分组/解组、个人模板创建/导入、资产增删和 WebSocket 协作监听。
 
 付费验收前实时估价 Nano Banana 2 为 1 积分。画布节点只执行一次并成功生成 1024×1024 钴蓝陶瓷杯图片，远端节点和项目级任务保留，本地下载文件可解码且内容符合提示词。项目任务关联到明确的媒体任务，但任务详情未提供可核对的逐任务实际扣费字段；依照“前次扣费不明确即停止”约束，第二次 1 积分参考编辑未提交，没有付费重试。
 

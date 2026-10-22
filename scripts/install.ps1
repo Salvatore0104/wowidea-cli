@@ -370,6 +370,16 @@ try {
   Invoke-Balance $script:ApiKey
   Invoke-Capabilities $script:ApiKey
   Write-Host "安装完成。"
+  Write-Host "把下面这段提示词复制给 AI 助手。每个项目在使用前都要先初始化："
+  Write-Host "-----"
+  $promptPath = Join-Path $dest 'docs\init-prompt.zh.txt'
+  if (Test-Path -LiteralPath $promptPath) {
+    & node -e "process.stdout.write(require('fs').readFileSync(process.argv[1], 'utf8'))" $promptPath
+    Write-Host ""
+  } else {
+    Write-Err "未找到初始化提示词：$promptPath"
+  }
+  Write-Host "-----"
 } finally {
   $script:ApiKey = $null
   $ErrorActionPreference = $previousErrorAction

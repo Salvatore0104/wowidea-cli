@@ -3,22 +3,14 @@
   "version": "0.8.0",
   "textNormalization": "UTF-8 with LF line endings; binary files hashed verbatim",
   "files": {
-    "canvas-agent-operator/SKILL.md": "27a66afec86bb92136c756177e37faafcbb6566bf135f40b0047c070fa34f739",
-    "canvas-agent-operator/agents/openai.yaml": "4e33d14bd765398432ea9464d69ee3e19ef747b7af993efe8c2a87683920945b",
-    "canvas-agent-operator/references/assets-and-portraits.md": "f516f7e2de4b5671904d3eacf3ea62382a8295fa02f4b1f1add7e08dc0e934a1",
-    "canvas-agent-operator/references/authentication-and-installation.md": "13d0ddadfec4e7caffbfb754a1130ecfd861517d70a4b3c0a6c971eb83fd42b7",
-    "canvas-agent-operator/references/execution-and-conflicts.md": "28742297221266dbb4db9390e162a41a5a31f3c03935f88559391ee95085db25",
-    "canvas-agent-operator/references/graphs-and-templates.md": "73b2a3725b92aa7528fba31040654ca1b89846a44ca3608deabb798a72e0d28c",
-    "canvas-agent-operator/references/shell-compatibility.md": "0ff2527fdcd2a12ee65fd167a595a18432eef47b462c4b2d75f4dc8872416833",
-    "canvas-agent-operator/skill.json": "9ff2f12a9fe62940c19fa49546b5c07421cfd37caf787baf8f4c2a4c12572705",
-    "easyai/SKILL.md": "cfc5c9fe1fa9479f7841ab2b2b1b1759d750e84b4b7fd5588b6908e81951ec03",
+    "easyai/SKILL.md": "b58343c5092856ba756ed010d26f640f60435c6e214e36dd97f407b4b987356a",
     "easyai/agents/openai.yaml": "1481c25b8bc9255633c011cdfbe29fd49d5b394596606689f23fc36b0026913f",
-    "easyai/references/commands.md": "f019bd8419159ea465d1cd20a4227d7fee063799bf74c8390a1d037239287145",
-    "easyai/references/first-run-zh.md": "0a7a2957db8801394ad17250f6d96f4f500ae521b6766c5dc9b76d03a5c433d1",
+    "easyai/references/commands.md": "e435f5e7810b8fd5eaddd9f0db266734a48ce790b35879ddf16f4f2cecdf4c90",
+    "easyai/references/first-run-zh.md": "dad4dcbd26e977efa9a7dbd2cdfdf7c8c161e4911274c15b12c81a60c3786982",
     "easyai/references/seedance.md": "677c27977371f763e167552167ba9d4a29bc3bca2f75412bef6e93d898173825",
     "gpt-image-25-prompt/SKILL.md": "139ccc2f4bd046bd5accfe034b70f5f9f54c250b3dd946ad928ce0fbed80eade",
     "gpt-image-25-prompt/agents/openai.yaml": "3d672aeac3b044f7bd31c78b472a0499fa4c1774c8af649427faeb934ccf23b7",
-    "wowidea/SKILL.md": "9a33a2c806bbd5d39987aad8b0ba0bb41e2db99c974d4a64e62fdeb359f9ca8b",
+    "wowidea/SKILL.md": "3c5da7109e6929531d5b292085d2c83f074ca506d249d1332efec206365645fc",
     "wowidea/agents/openai.yaml": "234234ee072c84bda01013083e5521d817d377d49e66234958c7c75c1ce72c7d",
     "wowidea/references/auto-routing.md": "0cfeb53c855bab87cbd7ca780f0e35a450ff3ec18d05fc683ef6d32ebc527d34",
     "wowidea/references/creative-direction.md": "f9d34350af7750cd0d7b69a586609456e52196ab1ea23e0dc875ff8c8d91301c",
@@ -35,7 +27,7 @@
     "wowidea/references/nano-banana-MIT.txt": "85bd9b7deaf2c54bc4d96af571e43d519e0892880c1740c4d97741f5bce64a62",
     "wowidea/references/nano-banana.md": "8af1c187f725e9441444f42c02788d0ae4bdd373e14bc94fd7308c52b5cf772d",
     "wowidea/references/production-rounds.md": "cdc1c8997c57ee2b0bbbdcb25df50e995b9d6c24c3f9873de0dc9bfcd8be30d0",
-    "wowidea/references/project-workflow.md": "1a637824457718740506cf554e0a64a4d9448e375ec60c8340a0d8d90192fd65",
+    "wowidea/references/project-workflow.md": "48d1d0f2f63e40f42c816d4ad079df587ac9a668d4d9288f312235281db8138c",
     "wowidea/references/recipe-authoring.md": "37c81e7b72b30bea0979ce4ea63306adacdef705061a21a63fad98bd3cdbc004",
     "wowidea/references/reference-planning.md": "3ab9abeb1282b8ec97a6f021d253cff222d8b9bd0c75a901b9752cb5c9ce2f91",
     "wowidea/references/seedance-20.md": "744df3a5dc66541b3b97d73088836bf0c4c9935dd6921ac3eaf975fa2d8cab84",
@@ -48,6 +40,6 @@
     "wowidea/references/visual-review.md": "ef9ed321f0a5eb68963ed31b22df0935fc2aa146cd7f16f686983637af7ab95c",
     "wowidea/references/vj-recipes.md": "20ac4ee7a0767af75b95f7e287e469684421e394c53f28b92e887a52c1e77e0b",
     "wowidea/references/wan.md": "1146cd0cf6c0342a41ed1225b61bcd30d0ed3c14287a445a65f37b56da0a3d88",
-    "wowidea/references/workflow.md": "5effd35e71a030879fa3aa411470be894ff269469e3c1839ab4b6306f506090a"
+    "wowidea/references/workflow.md": "34dc08a009e69e7bec76b63b9f356e4ace3cf739acc758e7401c811e9c8a204d"
   }
 }

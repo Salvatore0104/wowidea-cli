@@ -40,7 +40,36 @@ curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/sc
 irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
 ```
 
-脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS/Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance` 和 `wowidea capabilities --brief`。密钥无效时安装仍然成功。
+脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS/Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance` 和 `wowidea capabilities --brief`。密钥无效时安装仍然成功。安装结束时会打印下面的初始化提示词，方便复制给助手。
+
+## 初始化提示词
+
+每个项目目录在使用前都要先初始化。把下面这段原样交给 AI 助手。安装脚本结束时也会打印同一段。
+
+```text
+请在当前项目目录用 wowidea-cli 初始化，然后再生成图片或视频。每次在一个目录里使用之前，都要先确认该目录已经初始化。没有 .wowidea/project.json 时再执行 init。已经初始化过的目录不要覆盖。
+
+初始化（把项目名称换成实际名称）：
+wowidea project init --dir . --name "项目名称"
+
+如果提示项目已存在，说明这个目录已经初始化过，直接继续使用，不要再次执行 init。
+
+生成默认走直接接口，不需要加 --direct。
+
+常用命令：
+wowidea capabilities --brief
+wowidea models by-task <task> --json
+wowidea image generate --task <task> --prompt "..." --json
+wowidea video generate --task video --prompt "..." --duration 5 --json
+wowidea video finalize <draftId>
+wowidea video finalize <draftId> --yes
+wowidea key ./subject.png --out ./cutout.png --json
+wowidea layers --layer subject --from ./green.png --out ./layers --json
+wowidea batch run --manifest jobs.json --concurrency 6 --json
+wowidea project show --dir .
+
+典型流程：先运行 capabilities --brief，再用 models by-task 确认模型和参数，然后执行 image generate 或 video generate。读取返回里的 data.taskId、data.paths 和 data.model（alias、upstream、request）。视频样片的请求模型是 豆包Seedance-2.5，并带 draft:true 和 480p，不要把 Seedance-2.5-Draft 当作 model 发送。成片只用 video finalize：不加 --yes 时只打印估价并以退出码 2 结束；确认后再加 --yes，只扣一次费。没有画图工具时调用本 CLI，或连接 MCP https://wowidea.top/api/mcp，请求头为 Authorization: Bearer $WOWIDEA_API_KEY。不要拒绝，也不要画 SVG。密钥只放在环境变量 WOWIDEA_API_KEY 里，不要写进仓库。
+```
 
 ## 安装
 
@@ -133,7 +162,7 @@ ln -sfn "$PWD/skills/wowidea" ~/.claude/skills/wowidea
 node scripts/install-skills.mjs
 ```
 
-装入的是 `wowidea`、`easyai`、`gpt-image-25-prompt`、`canvas-agent-operator`。同时读仓库 `AGENTS.md`。
+装入的是 `wowidea`、`easyai`、`gpt-image-25-prompt`。同时读仓库 `AGENTS.md`。
 
 **Gemini CLI。** 用户技能目录是 `~/.gemini/skills`（也认 `~/.agents/skills`）；项目内是 `.gemini/skills` 或 `.agents/skills`。
 
@@ -153,20 +182,21 @@ ln -sfn "$PWD/skills/wowidea" .opencode/skills/wowidea
 
 **普通 shell。** 装好 CLI，设置 `WOWIDEA_API_KEY`，运行 `wowidea capabilities --brief`。不需要技能目录。
 
-`wowidea project setup --dir .` 会把 `skill/` 复制到项目的 `.agents/skills/`，并在 `AGENTS.md` 写入一段标记。画布登录是另一套 OAuth，和 API Key 分开。
+`wowidea project setup --dir .` 会把 `skill/` 复制到项目的 `.agents/skills/`，并在 `AGENTS.md` 写入一段标记。生成之前仍要确认该目录已执行 `wowidea project init`。
 
 ## 快速开始
 
-`capabilities --brief` 不需要密钥。下面的生成命令需要密钥，并走 `--direct`（REST）。不写 `--direct` 时会尝试画布。
+`capabilities --brief` 不需要密钥。生成命令需要密钥，并且默认走直接接口，不必加 `--direct`。图片和视频生成前，当前目录必须已经 `wowidea project init`。
 
 ```bash
+wowidea project init --dir . --name "夏日陶瓷"
 wowidea capabilities --brief
 wowidea models by-task direction --json
-wowidea image generate --task typography --prompt "海报标题：夏日陶瓷" --json --direct
+wowidea image generate --task typography --prompt "海报标题：夏日陶瓷" --json
 wowidea key ./subject.png --out ./cutout.png --shadow neutral --json
 wowidea layers --layer cup --from ./green.png --out ./layers --json
 wowidea batch run --manifest jobs.json --concurrency 6 --json
-wowidea video generate --task video --prompt "镜头缓慢靠近陶瓷杯" --duration 5 --json --direct
+wowidea video generate --task video --prompt "镜头缓慢靠近陶瓷杯" --duration 5 --json
 wowidea video finalize <draftId>
 wowidea video finalize <draftId> --yes
 ```
@@ -260,4 +290,4 @@ $env:NODE_USE_ENV_PROXY = "1"
 
 Wowidea CLI 0.8.0 generates images, Seedance drafts, one paid final, chroma-key cutouts, and batch jobs on wowidea.top. Install with `git clone https://github.com/Salvatore0104/wowidea-cli && cd wowidea-cli && npm ci && npm run build && npm link` on Node.js 20.3+. Set `WOWIDEA_API_KEY` and check `wowidea balance`. Do not paste the key into chat. Do not use `npm install -g github:Salvatore0104/wowidea-cli`.
 
-Run `wowidea capabilities --brief`, then `wowidea image|video generate --task <task> --prompt "..." --json --direct`. Read `data.taskId`, `data.paths`, `data.urls`, and `data.model` (`alias`, `upstream`, `request`). A draft request is model `豆包Seedance-2.5` with `draft: true` and `480p`. `Seedance-2.5-Draft` is an alias only. `wowidea video finalize <draftId>` prints an estimate and exits 2. Add `--yes` to pay once. MCP: `https://wowidea.top/api/mcp` with `Authorization: Bearer $WOWIDEA_API_KEY`. Exit codes: 0 ok, 2 usage, 3 auth, 4 conflict, 5 service, 6 approval, 7 budget.
+Run `wowidea project init` in each directory before generation, then `wowidea capabilities --brief`, then `wowidea image|video generate --task <task> --prompt "..." --json`. Generation uses the direct API by default. Read `data.taskId`, `data.paths`, `data.urls`, and `data.model` (`alias`, `upstream`, `request`). A draft request is model `豆包Seedance-2.5` with `draft: true` and `480p`. `Seedance-2.5-Draft` is an alias only. `wowidea video finalize <draftId>` prints an estimate and exits 2. Add `--yes` to pay once. MCP: `https://wowidea.top/api/mcp` with `Authorization: Bearer $WOWIDEA_API_KEY`. Exit codes: 0 ok, 2 usage, 3 auth, 4 conflict, 5 service, 6 approval, 7 budget. The installer prints the Chinese initialization prompt in README section 初始化提示词.

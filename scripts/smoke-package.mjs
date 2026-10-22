@@ -17,9 +17,9 @@ try {
   const pkg = join(temp, 'node_modules/@easyai/cli');
   const work = join(temp, 'programme'); await mkdir(work);
   const run = (...args) => JSON.parse(execFileSync(process.execPath, [join(pkg, 'dist/cli.js'), '--json', ...args], { cwd: work, encoding: 'utf8' })).data;
-  const setup = run('project', 'setup', '--dir', work, '--no-canvas');
+  const setup = run('project', 'setup', '--dir', work);
   const standalone = (...args) => JSON.parse(execFileSync(process.execPath, [join(work, '.wowidea/runtime/dist/cli.js'), '--json', ...args], { cwd: work, encoding: 'utf8' })).data;
-  for (const skill of ['canvas-agent-operator', 'easyai', 'gpt-image-25-prompt', 'wowidea']) await readFile(join(work, '.agents', 'skills', skill, 'SKILL.md'), 'utf8');
+  for (const skill of ['easyai', 'gpt-image-25-prompt', 'wowidea']) await readFile(join(work, '.agents', 'skills', skill, 'SKILL.md'), 'utf8');
   assert.equal(standalone('guides', 'list').length, 23);
   assert.equal(setup.credentialRuntime.available, false); // optional deps intentionally omitted
   assert.equal(run('guides', 'list').length, 23);
@@ -37,11 +37,7 @@ try {
   const install = () => JSON.parse(execFileSync(process.execPath, [join(pkg, 'scripts/install-skills.mjs')], { env, cwd: work, encoding: 'utf8' }));
   const installed = install();
     assert.equal(installed.version, version);
-  assert.deepEqual(installed.installedSkills, ['canvas-agent-operator', 'easyai', 'gpt-image-25-prompt', 'wowidea']);
-  const canvasVersion = JSON.parse(execFileSync(process.execPath, [join(pkg, 'dist/canvas-cli.js'), '--version'], { cwd: work, encoding: 'utf8' }));
-  assert.equal(canvasVersion.version, '0.5.0');
-  const fixedCanvasVersion = JSON.parse(execFileSync(process.execPath, [join(work, '.wowidea/runtime/dist/canvas-cli.js'), '--version'], { cwd: work, encoding: 'utf8' }));
-  assert.equal(fixedCanvasVersion.version, '0.5.0');
+  assert.deepEqual(installed.installedSkills, ['easyai', 'gpt-image-25-prompt', 'wowidea']);
   // Every model guide is an internal Wowidea reference reached through the single
   // $wowidea entry, so each one must resolve inside both the package and the install.
   for (const id of ['minimax-h3', 'seedance-20', 'seedance-25', 'gpt-image', 'gpt-image-25', 'nano-banana', 'midjourney']) {
@@ -56,7 +52,7 @@ try {
   assert.equal(await readFile(skill, 'utf8'), 'custom programme skill');
   assert.equal(await readFile(path, 'utf8'), before);
   execFileSync(process.execPath, [join(pkg, 'scripts/check-resources.mjs')], { cwd: work, stdio: 'pipe' });
-  console.log(JSON.stringify({ valid: true, archive, guides: 23, installedSkills: 4, canvasCli: '0.5.0', separateInstallation: true, differentCwd: true, projectRoundTrip: true, customSkillPreserved: true, credentialsTested: false, paidCalls: 0 }));
+  console.log(JSON.stringify({ valid: true, archive, guides: 23, installedSkills: 3, separateInstallation: true, differentCwd: true, projectRoundTrip: true, customSkillPreserved: true, credentialsTested: false, paidCalls: 0 }));
 } finally {
   const rel = relative(resolve(tmpdir()), resolve(temp));
   if (!rel || rel.startsWith('..') || isAbsolute(rel) || !basename(temp).startsWith('wowidea-package-smoke-')) throw new Error('Unexpected cleanup target');

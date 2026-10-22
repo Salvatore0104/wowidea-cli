@@ -7,7 +7,8 @@ When the user asks to install this CLI, follow [docs/agent-install.md](docs/agen
 ```text
 wowidea capabilities --brief
 wowidea models by-task <task> --json
-wowidea image|video generate --task <task> --prompt "..." --json --direct
+wowidea project init --dir . --name <name>
+wowidea image|video generate --task <task> --prompt "..." --json
 # read data.taskId, data.paths, data.model.alias, data.model.upstream, data.model.request
 wowidea video finalize <draftId>          # new draft: estimate, exit 2
 wowidea video finalize <draftId>          # already finalized: exit 0, no charge

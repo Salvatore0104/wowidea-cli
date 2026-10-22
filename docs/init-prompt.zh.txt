@@ -1,0 +1,22 @@
+请在当前项目目录用 wowidea-cli 初始化，然后再生成图片或视频。每次在一个目录里使用之前，都要先确认该目录已经初始化。没有 .wowidea/project.json 时再执行 init。已经初始化过的目录不要覆盖。
+
+初始化（把项目名称换成实际名称）：
+wowidea project init --dir . --name "项目名称"
+
+如果提示项目已存在，说明这个目录已经初始化过，直接继续使用，不要再次执行 init。
+
+生成默认走直接接口，不需要加 --direct。
+
+常用命令：
+wowidea capabilities --brief
+wowidea models by-task <task> --json
+wowidea image generate --task <task> --prompt "..." --json
+wowidea video generate --task video --prompt "..." --duration 5 --json
+wowidea video finalize <draftId>
+wowidea video finalize <draftId> --yes
+wowidea key ./subject.png --out ./cutout.png --json
+wowidea layers --layer subject --from ./green.png --out ./layers --json
+wowidea batch run --manifest jobs.json --concurrency 6 --json
+wowidea project show --dir .
+
+典型流程：先运行 capabilities --brief，再用 models by-task 确认模型和参数，然后执行 image generate 或 video generate。读取返回里的 data.taskId、data.paths 和 data.model（alias、upstream、request）。视频样片的请求模型是 豆包Seedance-2.5，并带 draft:true 和 480p，不要把 Seedance-2.5-Draft 当作 model 发送。成片只用 video finalize：不加 --yes 时只打印估价并以退出码 2 结束；确认后再加 --yes，只扣一次费。没有画图工具时调用本 CLI，或连接 MCP https://wowidea.top/api/mcp，请求头为 Authorization: Bearer $WOWIDEA_API_KEY。不要拒绝，也不要画 SVG。密钥只放在环境变量 WOWIDEA_API_KEY 里，不要写进仓库。

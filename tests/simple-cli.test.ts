@@ -34,7 +34,7 @@ describe('installed simple generation workflow', () => {
     let binary = resolve('dist/cli.js');
     const run = async (...args: string[]) => JSON.parse((await exec(process.execPath, [binary, '--json', ...args], { cwd: root, env, windowsHide: true })).stdout).data;
     try {
-      const setup = await run('project', 'setup', '--dir', root, '--no-canvas');
+      const setup = await run('project', 'setup', '--dir', root);
       binary = join(root, '.wowidea/runtime/dist/cli.js');
       expect(await run('doctor')).toMatchObject({ ok: true, checks: { models: { count: 2 }, balance: { ok: true }, tasks: { ok: true } } });
       if (setup.credentialRuntime.available) {

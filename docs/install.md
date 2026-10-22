@@ -53,7 +53,7 @@ wowidea --version
 wowidea capabilities --brief
 ```
 
-`wowidea` 与 `easyai` 指向同一个 `dist/cli.js`。`easyai-canvas` 是画布入口。
+`wowidea` 与 `easyai` 指向同一个 `dist/cli.js`。生成默认走直接接口。
 
 `npm link` 报 `EACCES` 时，不要用 sudo。把包装进用户目录：
 
@@ -88,7 +88,7 @@ npm link
 npm uninstall -g @easyai/cli
 ```
 
-这会去掉 `wowidea`、`easyai`、`easyai-canvas`。密钥在环境变量或钥匙串里，配置在 `~/.config/easyai`（或 `EASYAI_CONFIG_DIR`）。卸载不删除它们。要停用密钥，到网站 API Key 页撤销，或执行 `wowidea auth logout`（只清钥匙串，不清环境变量）。
+这会去掉 `wowidea` 和 `easyai`。密钥在环境变量或钥匙串里，配置在 `~/.config/easyai`（或 `EASYAI_CONFIG_DIR`）。卸载不删除它们。要停用密钥，到网站 API Key 页撤销，或执行 `wowidea auth logout`（只清钥匙串，不清环境变量）。
 
 ## API Key
 
@@ -161,7 +161,7 @@ ln -sfn "$PWD/skills/wowidea" ~/.claude/skills/wowidea
 node scripts/install-skills.mjs
 ```
 
-目标目录是 `WOWIDEA_SKILLS_DIR`，否则是 `$CODEX_HOME/skills` 或 `~/.codex/skills`。装入 `wowidea`、`easyai`、`gpt-image-25-prompt`、`canvas-agent-operator`。重复执行会保留你改过的技能文件。
+目标目录是 `WOWIDEA_SKILLS_DIR`，否则是 `$CODEX_HOME/skills` 或 `~/.codex/skills`。装入 `wowidea`、`easyai`、`gpt-image-25-prompt`。重复执行会保留你改过的技能文件。
 
 **Gemini CLI。** `~/.gemini/skills/wowidea`，或项目 `.gemini/skills/wowidea`。也认 `.agents/skills`。工作区技能需要 trusted。`AGENTS.md` 放在项目中，或把命令抄进 `GEMINI.md`。
 

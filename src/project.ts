@@ -56,6 +56,12 @@ export async function readProject(dir: string) {
   catch { throw new CliError("Project missing or invalid JSON; use project init --dir first.", ExitCode.Usage); }
   validateProject(project); return { path, project };
 }
+export async function requireProject(dir: string) {
+  const path = join(resolve(dir), ".wowidea", "project.json");
+  try { await readFile(path, "utf8"); }
+  catch { throw new CliError(`该目录尚未初始化。每次使用前请先运行：wowidea project init --dir ${resolve(dir)}`, ExitCode.Usage); }
+  return readProject(dir);
+}
 export async function recordCreation(dir: string, value: unknown) {
   await readProject(dir);
   const r = value as any;
