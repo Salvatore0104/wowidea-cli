@@ -12,7 +12,7 @@
 
 需要 Node.js 20.3 或更新（`package.json` 的 `engines` 是 `>=20`；`sharp` 要求 `^20.3` 或 `>=21`）、npm、Git。全局目录必须当前用户可写，不要为了安装使用 `sudo`。
 
-密钥在 [wowidea.top 的 API Key 页](https://wowidea.top/user/api-key) 新建。不要把密钥贴进聊天、仓库、技能文件或日志。
+密钥在 [wowidea.top 的 API Key 页](https://wowidea.top/user/api-key) 新建。自己创建环境变量的逐步说明在 [docs/创建环境变量.md](docs/创建环境变量.md)（macOS、Linux、Windows 图形界面和 PowerShell）。不要把密钥贴进聊天、仓库、技能文件或日志。
 
 ### 让助手安装
 
@@ -38,7 +38,7 @@ Windows PowerShell：
 $env:WOWIDEA_API_KEY="sk-你的Key"; irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
 ```
 
-不把密钥放进命令（脚本会提示输入）：
+不把密钥放进命令（脚本会弹出窗口或在终端隐藏输入；也可以按 [docs/创建环境变量.md](docs/创建环境变量.md) 自己设置）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.sh | bash
@@ -75,6 +75,8 @@ macOS（Apple 芯片与 Intel）、Linux（glibc 与 musl，x64 / arm64 等）�
 卸载：`npm uninstall -g @easyai/cli`。这会去掉 `wowidea` 和 `easyai`。卸载不删除 `~/.config/easyai`，也不删除系统钥匙串里的密钥。要停用密钥，到网站 API Key 页撤销，或执行 `wowidea auth logout`（只清钥匙串，不清环境变量）。
 
 ### API Key
+
+逐步点击说明（终端写入 `~/.zshrc` / `~/.bashrc`、Windows「环境变量」窗口、`setx`）在 [docs/创建环境变量.md](docs/创建环境变量.md)。下面是最短写法。
 
 bash / zsh（当前终端；要持久就写进 `~/.bashrc` 或 `~/.zshrc`）：
 

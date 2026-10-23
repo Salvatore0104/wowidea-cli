@@ -37,6 +37,31 @@ describe("chat prompts", () => {
     expect(await readFile(resolve("scripts/install-macos.sh"), "utf8")).toContain("docs/prompts/首次安装.txt");
     expect(await readFile(resolve("scripts/install-windows.ps1"), "utf8")).toContain("首次安装.txt");
   });
+
+  it("points the key prompt at a step-by-step environment variable guide", async () => {
+    const guide = await readFile(resolve("docs/创建环境变量.md"), "utf8");
+    expect(guide).toContain("https://wowidea.top/user/api-key");
+    expect(guide).toContain("~/.zshrc");
+    expect(guide).toContain("~/.bashrc");
+    expect(guide).toContain("sysdm.cpl");
+    expect(guide).toContain("用户变量");
+    expect(guide).toContain("setx WOWIDEA_API_KEY");
+    expect(guide).toContain("echo \"$WOWIDEA_API_KEY\"");
+    expect(guide).toContain("wowidea balance");
+    expect(guide).toContain("不要把密钥贴进聊天");
+    const readme = await readFile(resolve("README.md"), "utf8");
+    expect(readme).toContain("docs/创建环境变量.md");
+    const sh = await readFile(resolve("scripts/install.sh"), "utf8");
+    const ps1 = await readFile(resolve("scripts/install.ps1"), "utf8");
+    expect(sh).toContain("docs/创建环境变量.md");
+    expect(sh).toContain("已检测到 WOWIDEA_API_KEY，跳过输入。");
+    expect(sh).toContain("read -r -s");
+    expect(sh).toContain("with hidden answer");
+    expect(ps1).toContain("docs/创建环境变量.md");
+    expect(ps1).toContain("已检测到 WOWIDEA_API_KEY，跳过输入。");
+    expect(ps1).toContain("UseSystemPasswordChar");
+    expect(ps1).not.toContain("请在命令前加上");
+  });
 });
 describe("bundled Skill installer", () => {
   it("installs self-contained guides, preserves customizations and leaves account config alone", async () => {

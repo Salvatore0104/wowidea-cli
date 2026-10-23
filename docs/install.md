@@ -4,7 +4,7 @@
 
 ## 一句话安装
 
-密钥在 [wowidea.top](https://wowidea.top) 的 [API Key](https://wowidea.top/user/api-key) 页新建。写在命令里可能留在 shell 历史里；省略密钥时脚本会隐藏输入。
+密钥在 [wowidea.top](https://wowidea.top) 的 [API Key](https://wowidea.top/user/api-key) 页新建。写在命令里可能留在 shell 历史里；省略密钥时脚本会弹出窗口或在终端隐藏输入。自己创建环境变量的逐步说明在 [创建环境变量.md](创建环境变量.md)。
 
 macOS / Linux：
 
@@ -93,7 +93,7 @@ npm uninstall -g @easyai/cli
 ## API Key
 
 1. 登录 [wowidea.top](https://wowidea.top)，打开 [API Key](https://wowidea.top/user/api-key)，新建并复制。
-2. 只放进环境变量或本机钥匙串。不要贴进聊天、仓库、技能或日志。
+2. 只放进环境变量或本机钥匙串。不要贴进聊天、仓库、技能或日志。macOS、Linux、Windows 图形界面和 PowerShell 的逐步说明见 [创建环境变量.md](创建环境变量.md)。
 
 bash / zsh：
 
