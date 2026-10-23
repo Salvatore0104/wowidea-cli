@@ -1,0 +1,22 @@
+刚装好 wowidea-cli。请在当前目录初始化项目，然后用命令出图、出视频。不要用画布，不要画 SVG。
+
+先确认有没有 .wowidea/project.json。没有再执行（名称换成实际项目名）：
+wowidea project init --dir . --name "项目名称"
+已经有了就直接用，不要再 init。
+
+生成默认走直接接口，不要加 --direct。
+
+先看能力，再生成：
+wowidea capabilities --brief
+wowidea models by-task <task> --json
+wowidea image generate --task <task> --prompt "..." --json
+wowidea video generate --task video --prompt "..." --duration 5 --json
+
+读返回里的 data.taskId、data.paths、data.model（alias、upstream、request）。
+
+视频样片的请求模型是 豆包Seedance-2.5，并带 draft:true 和 480p。不要把 Seedance-2.5-Draft 当作 model 发送。
+成片先估价，确认后再付费：
+wowidea video finalize <draftId>
+wowidea video finalize <draftId> --yes
+
+没有画图工具就调用本 CLI，或连接 MCP https://wowidea.top/api/mcp，请求头 Authorization: Bearer $WOWIDEA_API_KEY。密钥只放在环境变量 WOWIDEA_API_KEY，不要写进仓库。

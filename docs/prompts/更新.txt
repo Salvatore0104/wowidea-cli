@@ -1,0 +1,17 @@
+wowidea-cli 刚升级。请在当前项目核对用法。不要重装，不要覆盖已有项目，不要用画布。
+
+先跑：
+wowidea --version
+wowidea capabilities --brief
+wowidea project show --dir .
+
+已有 .wowidea/project.json 就继续用。没有才执行：
+wowidea project init --dir . --name "项目名称"
+
+生成仍默认走直接接口，不要加 --direct。
+出图：wowidea image generate --task <task> --prompt "..." --json
+样片：wowidea video generate --task video --prompt "..." --duration 5 --json
+样片请求模型是 豆包Seedance-2.5（draft:true、480p）。不要发送 Seedance-2.5-Draft。
+成片：先 wowidea video finalize <draftId> 看估价，确认后再加 --yes。
+
+读 data.taskId、data.paths、data.model。密钥仍只在环境变量 WOWIDEA_API_KEY。

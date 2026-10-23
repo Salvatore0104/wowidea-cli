@@ -1,0 +1,16 @@
+要把 wowidea-cli 或 MCP 接到这个项目并上线。按下面做，不要把密钥写进仓库。
+
+确认当前目录有 .wowidea/project.json。没有再执行：
+wowidea project init --dir . --name "项目名称"
+已有不要覆盖。
+
+密钥只从环境变量 WOWIDEA_API_KEY 读取。部署环境也用这个名字。不要写进代码、配置或日志。
+
+生成走直接接口，不要加 --direct。出图出视频调用 CLI。只有 MCP、没有命令行时，连接 https://wowidea.top/api/mcp，请求头 Authorization: Bearer $WOWIDEA_API_KEY。不要用画布，不要画 SVG。
+
+上线前跑通：
+wowidea capabilities --brief
+wowidea balance
+balance 退出码 0 才算密钥可用。
+
+视频样片用 豆包Seedance-2.5（draft:true、480p）。成片只在确认后执行 wowidea video finalize <draftId> --yes。

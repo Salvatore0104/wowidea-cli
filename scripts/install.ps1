@@ -4,6 +4,9 @@
 #   irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
 #   $env:WOWIDEA_API_KEY="sk-..."; irm .../scripts/install.ps1 | iex
 #
+# When WOWIDEA_API_KEY is already set, the key prompt is skipped.
+# Otherwise a dialog asks for the key (hidden terminal input if there is no GUI).
+#
 # Key persistence: wowidea auth use-key (OS keychain) when it succeeds.
 # Otherwise setx WOWIDEA_API_KEY at user scope. Set WOWIDEA_INSTALL_SKIP_KEYCHAIN=1
 # to force the setx path.
@@ -51,10 +54,13 @@ function Assert-Git {
   if ($LASTEXITCODE -ne 0) { Fail "$Action 失败（退出码 $LASTEXITCODE）。" 1 }
 }
 
+$script:InstallMode = 'install'
+
 function Sync-Repo([string]$Dest, [string]$Repo, [string]$Ref) {
   $env:GIT_TERMINAL_PROMPT = '0'
   $gitDir = Join-Path $Dest '.git'
   if (Test-Path -LiteralPath $gitDir) {
+    $script:InstallMode = 'update'
     Write-Host "正在更新 $Dest（$Ref）..."
     & git -C $Dest remote set-url origin $Repo
     Assert-Git "git remote set-url"
@@ -72,6 +78,7 @@ function Sync-Repo([string]$Dest, [string]$Repo, [string]$Ref) {
       Fail "$Dest 已存在，但不是 git 仓库。请移走该目录后重试。" 1
     }
   }
+  $script:InstallMode = 'install'
   Write-Host "正在克隆 $Repo 到 $Dest ..."
   & git clone --depth 1 --branch $Ref $Repo $Dest
   Assert-Git "git clone"
@@ -162,30 +169,153 @@ function Install-Cli {
   Write-Host ("已安装：" + $wowidea.Source + "（" + $version.Trim() + "）")
 }
 
-function Read-WowideaKey {
-  # Agents have no TTY. A set WOWIDEA_API_KEY must not call Read-Host.
-  if ($env:WOWIDEA_API_KEY) { return $env:WOWIDEA_API_KEY }
-  $redirected = $false
-  try { $redirected = [Console]::IsInputRedirected } catch { $redirected = $false }
-  if ($redirected) {
-    Fail "未设置 WOWIDEA_API_KEY，且当前没有交互终端。请先设置 `$env:WOWIDEA_API_KEY 再运行。"
+function Get-KeyPromptText {
+  $guide = "自己设置见 docs/创建环境变量.md"
+  if ($script:InstallMode -eq 'update') {
+    return "未检测到 WOWIDEA_API_KEY，请粘贴密钥。`n获取密钥：https://wowidea.top/user/api-key`n输入不会显示。`n$guide"
   }
+  return "首次安装，请粘贴 API Key。`n获取密钥：https://wowidea.top/user/api-key`n输入不会显示。`n$guide"
+}
+
+function Write-KeyGuide {
+  $guide = Join-Path $env:USERPROFILE '.wowidea-cli\docs\创建环境变量.md'
+  if ($env:WOWIDEA_CLI_HOME) { $guide = Join-Path $env:WOWIDEA_CLI_HOME 'docs\创建环境变量.md' }
+  elseif ($dest) { $guide = Join-Path $dest 'docs\创建环境变量.md' }
+  Write-Host "也可以按文档自己设置环境变量 WOWIDEA_API_KEY："
+  Write-Host "本地：$guide"
+  Write-Host "网页：https://github.com/Salvatore0104/wowidea-cli/blob/master/docs/创建环境变量.md"
+}
+
+function Test-SkipKeyWait {
+  return [bool]($env:CI -or $env:GITHUB_ACTIONS -or $env:CONTINUOUS_INTEGRATION)
+}
+
+# Status: ok, cancel, timeout, unavailable. Key is set only for ok.
+function Invoke-KeyPopup([string]$Intro) {
+  if (Test-SkipKeyWait) { return [pscustomobject]@{ Status = 'unavailable'; Key = '' } }
+  if ($env:OS -ne 'Windows_NT') { return [pscustomobject]@{ Status = 'unavailable'; Key = '' } }
+  try { if (-not [Environment]::UserInteractive) { return [pscustomobject]@{ Status = 'unavailable'; Key = '' } } } catch { }
+  $formScript = {
+    param([string]$IntroText)
+    $ErrorActionPreference = 'Stop'
+    try {
+      Add-Type -AssemblyName System.Windows.Forms
+      Add-Type -AssemblyName System.Drawing
+      $form = New-Object System.Windows.Forms.Form
+      $form.Text = 'Wowidea API Key'
+      $form.FormBorderStyle = 'FixedDialog'
+      $form.StartPosition = 'CenterScreen'
+      $form.MaximizeBox = $false
+      $form.MinimizeBox = $false
+      $form.TopMost = $true
+      $form.ClientSize = New-Object System.Drawing.Size(460, 188)
+      $label = New-Object System.Windows.Forms.Label
+      $label.Text = $IntroText
+      $label.SetBounds(16, 12, 428, 72)
+      $box = New-Object System.Windows.Forms.TextBox
+      $box.UseSystemPasswordChar = $true
+      $box.SetBounds(16, 92, 428, 24)
+      $ok = New-Object System.Windows.Forms.Button
+      $ok.Text = '确定'
+      $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
+      $ok.SetBounds(268, 136, 80, 28)
+      $cancel = New-Object System.Windows.Forms.Button
+      $cancel.Text = '取消'
+      $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+      $cancel.SetBounds(360, 136, 80, 28)
+      $form.Controls.AddRange(@($label, $box, $ok, $cancel))
+      $form.AcceptButton = $ok
+      $form.CancelButton = $cancel
+      $form.ActiveControl = $box
+      $dialog = $form.ShowDialog()
+      $value = $box.Text
+      $box.Clear()
+      $form.Dispose()
+      if ($dialog -eq [System.Windows.Forms.DialogResult]::OK) {
+        [pscustomobject]@{ Status = 'ok'; Key = $value }
+      } else {
+        [pscustomobject]@{ Status = 'cancel'; Key = '' }
+      }
+    } catch {
+      [pscustomobject]@{ Status = 'unavailable'; Key = '' }
+    }
+  }
+  $rs = $null
+  $ps = $null
   try {
-    Write-Host "请输入 WOWIDEA_API_KEY（输入不回显）：" -NoNewline
-    $secure = Read-Host -AsSecureString
+    $rs = [runspacefactory]::CreateRunspace()
+    $rs.ApartmentState = [System.Threading.ApartmentState]::STA
+    $rs.Open()
+    $ps = [powershell]::Create()
+    $ps.Runspace = $rs
+    $null = $ps.AddScript($formScript).AddArgument($Intro)
+    $pending = $ps.BeginInvoke()
+    if (-not $pending.AsyncWaitHandle.WaitOne(180000)) {
+      try { $ps.Stop() } catch { }
+      return [pscustomobject]@{ Status = 'timeout'; Key = '' }
+    }
+    $out = @($ps.EndInvoke($pending))
+    if ($out.Count -ge 1 -and $out[-1].Status) { return $out[-1] }
+    return [pscustomobject]@{ Status = 'unavailable'; Key = '' }
   } catch {
-    Fail "未设置 WOWIDEA_API_KEY，且当前没有交互终端。请先设置 `$env:WOWIDEA_API_KEY 再运行。"
-  }
-  if ($null -eq $secure -or $secure.Length -eq 0) { Fail "密钥为空。" }
-  $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-  try {
-    $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+    return [pscustomobject]@{ Status = 'unavailable'; Key = '' }
   } finally {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-    $secure.Dispose()
+    if ($ps) { $ps.Dispose() }
+    if ($rs) { $rs.Close(); $rs.Dispose() }
   }
+}
+
+function ConvertFrom-SecureKey([Security.SecureString]$Secure) {
+  if ($null -eq $Secure -or $Secure.Length -eq 0) { return '' }
+  $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure)
+  try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
+  finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+    $Secure.Dispose()
+  }
+}
+
+function Read-WowideaKey {
+  # A set WOWIDEA_API_KEY must not open a dialog or Read-Host.
+  if ($env:WOWIDEA_API_KEY -and $env:WOWIDEA_API_KEY.Trim()) {
+    Write-Host "已检测到 WOWIDEA_API_KEY，跳过输入。"
+    return $env:WOWIDEA_API_KEY.Trim()
+  }
+  if (Test-SkipKeyWait) {
+    Fail "未设置 WOWIDEA_API_KEY。当前环境不会等待输入。请按 docs/创建环境变量.md 自己设置。密钥页面：https://wowidea.top/user/api-key"
+  }
+  $intro = Get-KeyPromptText
+  Write-KeyGuide
+  if ($env:OS -eq 'Windows_NT') {
+    Write-Host "请在弹出的窗口中粘贴 API Key。获取密钥：https://wowidea.top/user/api-key"
+  }
+  $popup = Invoke-KeyPopup $intro
+  $plain = ''
+  if ($popup.Status -eq 'ok') {
+    $plain = $popup.Key
+  } elseif ($popup.Status -eq 'cancel') {
+    Fail "已取消输入密钥。"
+  } elseif ($popup.Status -eq 'timeout') {
+    Fail "等待输入密钥超时。请重新运行安装脚本，或按 docs/创建环境变量.md 自己设置。密钥页面：https://wowidea.top/user/api-key"
+  } else {
+    if ($script:InstallMode -eq 'update') {
+      Write-Host "未检测到 WOWIDEA_API_KEY，请输入密钥"
+    } else {
+      Write-Host "首次安装：请设置 API Key"
+    }
+    Write-Host "打开 https://wowidea.top/user/api-key 复制密钥，粘贴后回车。"
+    Write-Host "输入不会显示在屏幕上。"
+    try {
+      $plain = ConvertFrom-SecureKey (Read-Host -AsSecureString)
+    } catch {
+      Fail "没有可交互的终端，无法输入密钥。请按 docs/创建环境变量.md 自己设置后重试。密钥页面：https://wowidea.top/user/api-key"
+    }
+  }
+  if ($null -eq $plain) { $plain = '' }
+  $plain = $plain.Trim()
   if ([string]::IsNullOrEmpty($plain)) { Fail "密钥为空。" }
   if ($plain.Contains("`n") -or $plain.Contains("`r")) { Fail "密钥不能包含换行。" }
+  Write-Host "已设置 WOWIDEA_API_KEY。"
   return $plain
 }
 
@@ -370,14 +500,21 @@ try {
   Invoke-Balance $script:ApiKey
   Invoke-Capabilities $script:ApiKey
   Write-Host "安装完成。"
-  Write-Host "新建项目并开启新对话时，把下面这段交给 AI："
+  if ($script:InstallMode -eq 'update') {
+    $promptName = '更新.txt'
+    Write-Host "升级完成。把下面这段交给当前项目里的 AI："
+  } else {
+    $promptName = '首次安装.txt'
+    Write-Host "首次安装完成。新开一个 AI 对话，把下面这段贴进去："
+  }
+  $promptPath = Join-Path $dest "docs\prompts\$promptName"
+  Write-Host "文件：$promptPath"
   Write-Host "-----"
-  $promptPath = Join-Path $dest 'docs\init-prompt.zh.txt'
   if (Test-Path -LiteralPath $promptPath) {
     & node -e "process.stdout.write(require('fs').readFileSync(process.argv[1], 'utf8'))" $promptPath
     Write-Host ""
   } else {
-    Write-Err "未找到初始化提示词：$promptPath"
+    Write-Err "未找到话术提示词：$promptPath"
   }
   Write-Host "-----"
 } finally {

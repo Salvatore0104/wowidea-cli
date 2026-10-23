@@ -5,6 +5,9 @@
 #   curl -fsSL .../scripts/install.sh | bash
 #   curl -fsSL .../scripts/install.sh | WOWIDEA_API_KEY=sk-... bash
 #
+# When WOWIDEA_API_KEY is already set, the key prompt is skipped.
+# Otherwise a dialog asks for the key (hidden terminal input if there is no GUI).
+#
 # The brace group is intentional: bash reads the whole group before running it,
 # so a curl | bash pipe cannot be eaten by git, npm, or node.
 
@@ -16,6 +19,8 @@ REPO="${WOWIDEA_CLI_REPO:-${EASYAI_CLI_REPO:-https://github.com/Salvatore0104/wo
 REF="${WOWIDEA_CLI_REF:-${EASYAI_CLI_REF:-master}}"
 DEST="${WOWIDEA_CLI_HOME:-$HOME/.wowidea-cli}"
 KEY=""
+PROMPTED=0
+MODE="install"
 # shellcheck disable=SC2034
 tmps=()
 ORIGINAL_PATH="${PATH}"
@@ -76,12 +81,14 @@ require_tools() {
 sync_repo() {
   export GIT_TERMINAL_PROMPT=0
   if [[ -d "${DEST}/.git" ]]; then
+    MODE="update"
     printf '%s\n' "正在更新 ${DEST}（${REF}）..."
     git -C "$DEST" remote set-url origin "$REPO" </dev/null
     git -C "$DEST" fetch --depth 1 origin "$REF" </dev/null
     git -C "$DEST" checkout --detach --force FETCH_HEAD </dev/null
     return 0
   fi
+  MODE="install"
   if [[ -d "$DEST" ]] && [[ -z "$(ls -A "$DEST")" ]]; then
     rmdir "$DEST"
   fi
@@ -217,17 +224,129 @@ tty_ok() {
   { : >/dev/tty; } 2>/dev/null
 }
 
+# Returns 0 and sets KEY. 1 = no GUI, try the terminal. 2 = cancelled. 3 = timed out.
+try_popup_key() {
+  local status out err text
+  if [[ -n "${CI:-}${GITHUB_ACTIONS:-}${CONTINUOUS_INTEGRATION:-}" ]]; then
+    return 1
+  fi
+  if [[ "${MODE:-install}" == "update" ]]; then
+    text="未检测到 WOWIDEA_API_KEY，请粘贴密钥。"
+  else
+    text="首次安装，请粘贴 API Key。"
+  fi
+  if [[ "$(uname -s)" == "Darwin" && -z "${SSH_CONNECTION:-}${SSH_TTY:-}" ]] && command -v osascript >/dev/null 2>&1; then
+    status=0
+    out="$(osascript - "$text" 2>/dev/null <<'APPLESCRIPT'
+on run argv
+  set intro to item 1 of argv
+  try
+    set d to display dialog intro & return & "获取密钥：https://wowidea.top/user/api-key" & return & "输入不会显示。" with title "Wowidea API Key" default answer "" with hidden answer buttons {"确定", "取消"} default button "确定" cancel button "取消" giving up after 180
+    if gave up of d then
+      return "__WOW_TIMEOUT__"
+    end if
+    return text returned of d
+  on error number -128
+    return "__WOW_CANCEL__"
+  end try
+end run
+APPLESCRIPT
+)" || status=$?
+    if [[ "$status" -ne 0 || -z "$out" ]]; then
+      return 1
+    fi
+    if [[ "$out" == "__WOW_CANCEL__" ]]; then
+      return 2
+    fi
+    if [[ "$out" == "__WOW_TIMEOUT__" ]]; then
+      return 3
+    fi
+    KEY="$out"
+    return 0
+  fi
+  if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v zenity >/dev/null 2>&1; then
+    err="$(mktmp)"
+    status=0
+    if command -v timeout >/dev/null 2>&1; then
+      out="$(timeout 180 zenity --password --title="Wowidea API Key" --text="${text} 获取密钥：https://wowidea.top/user/api-key 。输入不会显示。" 2>"$err")" || status=$?
+    else
+      out="$(zenity --password --title="Wowidea API Key" --text="${text} 获取密钥：https://wowidea.top/user/api-key 。输入不会显示。" 2>"$err")" || status=$?
+    fi
+    if [[ "$status" -eq 0 ]]; then
+      KEY="$out"
+      return 0
+    fi
+    if [[ "$status" -eq 124 ]]; then
+      return 3
+    fi
+    if [[ "$status" -eq 1 && ! -s "$err" ]]; then
+      return 2
+    fi
+    return 1
+  fi
+  return 1
+}
+
+print_key_guide() {
+  local guide="${DEST}/docs/创建环境变量.md"
+  if tty_ok; then
+    printf '%s\n' "也可以按文档自己设置环境变量 WOWIDEA_API_KEY：" >/dev/tty
+    printf '%s\n' "本地：${guide}" >/dev/tty
+    printf '%s\n' "网页：https://github.com/Salvatore0104/wowidea-cli/blob/master/docs/创建环境变量.md" >/dev/tty
+  else
+    printf '%s\n' "也可以按文档自己设置环境变量 WOWIDEA_API_KEY："
+    printf '%s\n' "本地：${guide}"
+    printf '%s\n' "网页：https://github.com/Salvatore0104/wowidea-cli/blob/master/docs/创建环境变量.md"
+  fi
+}
+
+prompt_on_tty() {
+  if [[ "${MODE:-install}" == "update" ]]; then
+    printf '%s\n' "未检测到 WOWIDEA_API_KEY，请输入密钥" >/dev/tty
+  else
+    printf '%s\n' "首次安装：请设置 API Key" >/dev/tty
+  fi
+  printf '%s\n' "打开 https://wowidea.top/user/api-key 复制密钥，粘贴后回车。" >/dev/tty
+  printf '%s\n' "输入不会显示在屏幕上。" >/dev/tty
+  IFS= read -r -s KEY </dev/tty || true
+  printf '\n' >/dev/tty
+}
+
+prompt_for_key() {
+  local got=0
+  if [[ -n "${CI:-}${GITHUB_ACTIONS:-}${CONTINUOUS_INTEGRATION:-}" ]]; then
+    die "未设置 WOWIDEA_API_KEY。当前环境不会等待输入。请按 docs/创建环境变量.md 自己设置。密钥页面：https://wowidea.top/user/api-key"
+  fi
+  print_key_guide
+  try_popup_key || got=$?
+  if [[ "$got" -eq 0 ]]; then
+    return 0
+  fi
+  if [[ "$got" -eq 2 ]]; then
+    die "已取消输入密钥。"
+  fi
+  if [[ "$got" -eq 3 ]]; then
+    die "等待输入密钥超时。请重新运行安装脚本，或按 docs/创建环境变量.md 自己设置。密钥页面：https://wowidea.top/user/api-key"
+  fi
+  if tty_ok; then
+    prompt_on_tty
+    return 0
+  fi
+  die "没有可交互的终端，无法输入密钥。请按 docs/创建环境变量.md 自己设置后重试。密钥页面：https://wowidea.top/user/api-key"
+}
+
 read_key() {
-  # Agents have no TTY. A set WOWIDEA_API_KEY must not open /dev/tty or read stdin.
+  # A set WOWIDEA_API_KEY must not open a dialog, /dev/tty, or stdin.
   if [[ -n "${WOWIDEA_API_KEY:-}" ]]; then
     KEY="${WOWIDEA_API_KEY}"
-  elif tty_ok; then
-    printf '%s' "请输入 WOWIDEA_API_KEY（输入不回显）：" >/dev/tty
-    IFS= read -r -s KEY </dev/tty || true
-    printf '\n' >/dev/tty
+    printf '%s\n' "已检测到 WOWIDEA_API_KEY，跳过输入。"
   else
-    die "未设置 WOWIDEA_API_KEY，且当前没有终端可以提示输入。请在命令前加上 WOWIDEA_API_KEY=sk-... ，或在终端里重新运行。"
+    prompt_for_key
+    PROMPTED=1
   fi
+  KEY="${KEY//$'\r'/}"
+  KEY="${KEY#"${KEY%%[![:space:]]*}"}"
+  KEY="${KEY%"${KEY##*[![:space:]]}"}"
   if [[ -z "$KEY" ]]; then
     die "密钥为空。"
   fi
@@ -235,6 +354,9 @@ read_key() {
     *$'\n'*|*$'\r'*) die "密钥不能包含换行。" ;;
   esac
   export WOWIDEA_API_KEY="$KEY"
+  if [[ "$PROMPTED" -eq 1 ]]; then
+    printf '%s\n' "已设置 WOWIDEA_API_KEY。"
+  fi
 }
 
 redact_stream() {
@@ -426,15 +548,23 @@ verify_balance() {
   return 0
 }
 
-print_init_prompt() {
-  local prompt="${DEST}/docs/init-prompt.zh.txt"
-  printf '%s\n' "新建项目并开启新对话时，把下面这段交给 AI："
+print_chat_prompt() {
+  local prompt label
+  if [[ "$MODE" == "update" ]]; then
+    prompt="${DEST}/docs/prompts/更新.txt"
+    label="升级完成。把下面这段交给当前项目里的 AI："
+  else
+    prompt="${DEST}/docs/prompts/首次安装.txt"
+    label="首次安装完成。新开一个 AI 对话，把下面这段贴进去："
+  fi
+  printf '%s\n' "$label"
+  printf '%s\n' "文件：${prompt}"
   printf '%s\n' "-----"
   if [[ -f "$prompt" ]]; then
     cat "$prompt"
     printf '\n'
   else
-    printf '%s\n' "未找到初始化提示词：${prompt}" >&2
+    printf '%s\n' "未找到话术提示词：${prompt}" >&2
   fi
   printf '%s\n' "-----"
 }
@@ -460,7 +590,7 @@ main() {
   verify_balance
   verify_brief
   printf '%s\n' "安装完成。"
-  print_init_prompt
+  print_chat_prompt
   cleanup
 }
 

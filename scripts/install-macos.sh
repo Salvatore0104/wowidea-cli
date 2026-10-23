@@ -18,3 +18,14 @@ package_file="$(npm pack --silent)"
 npm install --global "$workdir/$package_file"
 node "$(npm root --global)/@easyai/cli/scripts/install-skills.mjs"
 echo 'Wowidea installed. In Codex use $wowidea and provide your API key for automatic setup. Optional terminal input: wowidea auth use-key --prompt.'
+prompt="$(npm root --global)/@easyai/cli/docs/prompts/首次安装.txt"
+printf '%s\n' "首次安装完成。新开一个 AI 对话，把下面这段贴进去："
+printf '%s\n' "文件：${prompt}"
+printf '%s\n' "-----"
+if [[ -f "$prompt" ]]; then
+  cat "$prompt"
+  printf '\n'
+else
+  printf '%s\n' "未找到话术提示词：${prompt}" >&2
+fi
+printf '%s\n' "-----"
