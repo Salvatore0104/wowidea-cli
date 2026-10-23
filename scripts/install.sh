@@ -16,6 +16,7 @@ REPO="${WOWIDEA_CLI_REPO:-${EASYAI_CLI_REPO:-https://github.com/Salvatore0104/wo
 REF="${WOWIDEA_CLI_REF:-${EASYAI_CLI_REF:-master}}"
 DEST="${WOWIDEA_CLI_HOME:-$HOME/.wowidea-cli}"
 KEY=""
+MODE="install"
 # shellcheck disable=SC2034
 tmps=()
 ORIGINAL_PATH="${PATH}"
@@ -76,12 +77,14 @@ require_tools() {
 sync_repo() {
   export GIT_TERMINAL_PROMPT=0
   if [[ -d "${DEST}/.git" ]]; then
+    MODE="update"
     printf '%s\n' "正在更新 ${DEST}（${REF}）..."
     git -C "$DEST" remote set-url origin "$REPO" </dev/null
     git -C "$DEST" fetch --depth 1 origin "$REF" </dev/null
     git -C "$DEST" checkout --detach --force FETCH_HEAD </dev/null
     return 0
   fi
+  MODE="install"
   if [[ -d "$DEST" ]] && [[ -z "$(ls -A "$DEST")" ]]; then
     rmdir "$DEST"
   fi
@@ -426,15 +429,23 @@ verify_balance() {
   return 0
 }
 
-print_init_prompt() {
-  local prompt="${DEST}/docs/init-prompt.zh.txt"
-  printf '%s\n' "新建项目并开启新对话时，把下面这段交给 AI："
+print_chat_prompt() {
+  local prompt label
+  if [[ "$MODE" == "update" ]]; then
+    prompt="${DEST}/docs/prompts/更新.txt"
+    label="升级完成。把下面这段交给当前项目里的 AI："
+  else
+    prompt="${DEST}/docs/prompts/首次安装.txt"
+    label="首次安装完成。新开一个 AI 对话，把下面这段贴进去："
+  fi
+  printf '%s\n' "$label"
+  printf '%s\n' "文件：${prompt}"
   printf '%s\n' "-----"
   if [[ -f "$prompt" ]]; then
     cat "$prompt"
     printf '\n'
   else
-    printf '%s\n' "未找到初始化提示词：${prompt}" >&2
+    printf '%s\n' "未找到话术提示词：${prompt}" >&2
   fi
   printf '%s\n' "-----"
 }
@@ -460,7 +471,7 @@ main() {
   verify_balance
   verify_brief
   printf '%s\n' "安装完成。"
-  print_init_prompt
+  print_chat_prompt
   cleanup
 }
 

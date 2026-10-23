@@ -4,7 +4,7 @@
 
 - Generation uses the direct API by default. `--direct` is accepted and does not change the path. Image and video generation, batch runs, and generated layers require `wowidea project init` in that directory first.
 - Removed infinite-canvas takeover: `easyai-canvas`, `canvas-agent-operator`, `project canvas`, canvas binding, and canvas generation.
-- After a successful install, the installers print a Chinese prompt for a new project and a new AI chat. The same text is in the README under「新建项目与对话时的初始化提示词」and in `docs/init-prompt.zh.txt`.
+- Chat prompts are three short files: `docs/prompts/首次安装.txt`, `docs/prompts/更新.txt`, and `docs/prompts/部署.txt`. Installers print the first after a new install and the second after an upgrade. README only lists when to use each. `docs/init-prompt.zh.txt` is removed.
 - Docs: README opens with a chat prompt so a coding agent can install the CLI. `docs/agent-install.md` is the non-interactive runbook (env `WOWIDEA_API_KEY`, no TTY, no sudo). Linked from AGENTS.md and llms.txt.
 - Install: `scripts/install.sh` and `scripts/install.ps1` are idempotent one-line installers. They clone or update `~/.wowidea-cli`, build, `npm link` (or pack into `~/.local` when the global prefix is not writable), store `WOWIDEA_API_KEY` via `wowidea auth use-key` when the keychain works, otherwise shell startup files or `setx`, then run `wowidea balance`. A failed balance check does not fail the install. README, docs/install.md, and AGENTS.md lead with the curl and PowerShell commands.
 - Docs: rewrite README and docs/install.md around the 0.8.0 command contract (install, API key, harness setup, routing, JSON, exit codes 0–7). `npm install -g github:Salvatore0104/wowidea-cli` is not a supported install path.

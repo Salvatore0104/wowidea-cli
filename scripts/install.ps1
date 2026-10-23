@@ -51,10 +51,13 @@ function Assert-Git {
   if ($LASTEXITCODE -ne 0) { Fail "$Action 失败（退出码 $LASTEXITCODE）。" 1 }
 }
 
+$script:InstallMode = 'install'
+
 function Sync-Repo([string]$Dest, [string]$Repo, [string]$Ref) {
   $env:GIT_TERMINAL_PROMPT = '0'
   $gitDir = Join-Path $Dest '.git'
   if (Test-Path -LiteralPath $gitDir) {
+    $script:InstallMode = 'update'
     Write-Host "正在更新 $Dest（$Ref）..."
     & git -C $Dest remote set-url origin $Repo
     Assert-Git "git remote set-url"
@@ -72,6 +75,7 @@ function Sync-Repo([string]$Dest, [string]$Repo, [string]$Ref) {
       Fail "$Dest 已存在，但不是 git 仓库。请移走该目录后重试。" 1
     }
   }
+  $script:InstallMode = 'install'
   Write-Host "正在克隆 $Repo 到 $Dest ..."
   & git clone --depth 1 --branch $Ref $Repo $Dest
   Assert-Git "git clone"
@@ -370,14 +374,21 @@ try {
   Invoke-Balance $script:ApiKey
   Invoke-Capabilities $script:ApiKey
   Write-Host "安装完成。"
-  Write-Host "新建项目并开启新对话时，把下面这段交给 AI："
+  if ($script:InstallMode -eq 'update') {
+    $promptName = '更新.txt'
+    Write-Host "升级完成。把下面这段交给当前项目里的 AI："
+  } else {
+    $promptName = '首次安装.txt'
+    Write-Host "首次安装完成。新开一个 AI 对话，把下面这段贴进去："
+  }
+  $promptPath = Join-Path $dest "docs\prompts\$promptName"
+  Write-Host "文件：$promptPath"
   Write-Host "-----"
-  $promptPath = Join-Path $dest 'docs\init-prompt.zh.txt'
   if (Test-Path -LiteralPath $promptPath) {
     & node -e "process.stdout.write(require('fs').readFileSync(process.argv[1], 'utf8'))" $promptPath
     Write-Host ""
   } else {
-    Write-Err "未找到初始化提示词：$promptPath"
+    Write-Err "未找到话术提示词：$promptPath"
   }
   Write-Host "-----"
 } finally {

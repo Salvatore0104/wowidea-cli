@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/sc
 irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
 ```
 
-脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS / Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance` 和 `wowidea capabilities --brief`。密钥无效时安装仍然成功。安装成功结束时会打印「新建项目与对话时的初始化提示词」，方便贴进新项目的新对话。
+脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS / Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance` 和 `wowidea capabilities --brief`。密钥无效时安装仍然成功。首次安装结束时打印 `docs/prompts/首次安装.txt`；再运行一次是升级，结束时打印 `docs/prompts/更新.txt`。
 
 ### 手动安装
 
@@ -101,34 +101,15 @@ wowidea balance
 
 没有钥匙串时 CLI 会要求设置 `WOWIDEA_API_KEY`。未配置密钥时 `wowidea balance` 退出码为 3。
 
-## 新建项目与对话时的初始化提示词
+## 话术提示词
 
-安装完成后，新建项目并开启新对话时，把下面这段交给 AI。安装脚本在安装成功结束时也会打印同一段，正文在 `docs/init-prompt.zh.txt`。
+三段都可以直接贴进 AI 对话。正文只在这三个文件里。
 
-```text
-这是新建项目后的新对话。请先用 wowidea-cli 在当前项目目录完成初始化，再生成图片或视频。每次在一个目录里使用之前，都要先确认该目录已经初始化。没有 .wowidea/project.json 时再执行 init。已经初始化过的目录不要覆盖。
-
-初始化（把项目名称换成实际名称）：
-wowidea project init --dir . --name "项目名称"
-
-如果提示项目已存在，说明这个目录已经初始化过，直接继续使用，不要再次执行 init。
-
-生成默认走直接接口，不需要加 --direct。
-
-常用命令：
-wowidea capabilities --brief
-wowidea models by-task <task> --json
-wowidea image generate --task <task> --prompt "..." --json
-wowidea video generate --task video --prompt "..." --duration 5 --json
-wowidea video finalize <draftId>
-wowidea video finalize <draftId> --yes
-wowidea key ./subject.png --out ./cutout.png --json
-wowidea layers --layer subject --from ./green.png --out ./layers --json
-wowidea batch run --manifest jobs.json --concurrency 6 --json
-wowidea project show --dir .
-
-典型流程：先运行 capabilities --brief，再用 models by-task 确认模型和参数，然后执行 image generate 或 video generate。读取返回里的 data.taskId、data.paths 和 data.model（alias、upstream、request）。视频样片的请求模型是 豆包Seedance-2.5，并带 draft:true 和 480p，不要把 Seedance-2.5-Draft 当作 model 发送。成片只用 video finalize：不加 --yes 时只打印估价并以退出码 2 结束；确认后再加 --yes，只扣一次费。没有画图工具时调用本 CLI，或连接 MCP https://wowidea.top/api/mcp，请求头为 Authorization: Bearer $WOWIDEA_API_KEY。不要拒绝，也不要画 SVG。密钥只放在环境变量 WOWIDEA_API_KEY 里，不要写进仓库。
-```
+| 文件 | 什么时候用 |
+| --- | --- |
+| [docs/prompts/首次安装.txt](docs/prompts/首次安装.txt) | 第一次装好后，新开一个 AI 对话，让它初始化项目并学会用 CLI |
+| [docs/prompts/更新.txt](docs/prompts/更新.txt) | 升级已有安装后，贴进当前项目的对话 |
+| [docs/prompts/部署.txt](docs/prompts/部署.txt) | 把 CLI 或 MCP 接到项目里、准备上线时 |
 
 ## 使用
 

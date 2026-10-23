@@ -29,3 +29,14 @@ try {
   Remove-Item -LiteralPath $resolvedTemp -Recurse -Force
 }
 Write-Host 'Wowidea installed. In Codex use $wowidea and provide your API key for automatic setup. Optional terminal input: wowidea auth use-key --prompt.'
+$promptPath = Join-Path (npm root --global) '@easyai/cli\docs\prompts\首次安装.txt'
+Write-Host "首次安装完成。新开一个 AI 对话，把下面这段贴进去："
+Write-Host "文件：$promptPath"
+Write-Host "-----"
+if (Test-Path -LiteralPath $promptPath) {
+  & node -e "process.stdout.write(require('fs').readFileSync(process.argv[1], 'utf8'))" $promptPath
+  Write-Host ""
+} else {
+  [Console]::Error.WriteLine("未找到话术提示词：$promptPath")
+}
+Write-Host "-----"
