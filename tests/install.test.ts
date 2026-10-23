@@ -4,6 +4,20 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 const { version } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+describe("initialization prompt", () => {
+  it("prints the same Chinese prompt from the installer and the README", async () => {
+    const prompt = (await readFile(resolve("docs/init-prompt.zh.txt"), "utf8")).trim();
+    expect(prompt).toContain("这是新建项目后的新对话");
+    expect(prompt).toContain("wowidea project init");
+    expect(prompt).toContain("不需要加 --direct");
+    const readme = await readFile(resolve("README.md"), "utf8");
+    expect(readme).toContain("## 新建项目与对话时的初始化提示词");
+    expect(readme).toContain("安装完成后，新建项目并开启新对话时，把下面这段交给 AI。");
+    expect(readme).toContain(prompt);
+    expect(await readFile(resolve("scripts/install.sh"), "utf8")).toContain("docs/init-prompt.zh.txt");
+    expect(await readFile(resolve("scripts/install.ps1"), "utf8")).toContain("init-prompt.zh.txt");
+  });
+});
 describe("bundled Skill installer", () => {
   it("installs self-contained guides, preserves customizations and leaves account config alone", async () => {
     const dir = await mkdtemp(join(tmpdir(), "wowidea-install-test-"));
@@ -12,12 +26,12 @@ describe("bundled Skill installer", () => {
     try {
       const first = run();
       expect(first.version).toBe(version);
-      expect(first.installedSkills).toEqual(["canvas-agent-operator", "easyai", "gpt-image-25-prompt", "wowidea"]);
+      expect(first.installedSkills).toEqual(["easyai", "gpt-image-25-prompt", "wowidea"]);
       for (const name of first.installedSkills) {
         expect(await readFile(join(dir, "skills", name, "SKILL.md"), "utf8")).toBe(await readFile(resolve("skill", name, "SKILL.md"), "utf8"));
       }
       expect(await readFile(join(dir, "skills", "wowidea", "SKILL.md"), "utf8")).toContain("Never use Computer Use");
-      expect(await readFile(join(dir, "skills", "canvas-agent-operator", "SKILL.md"), "utf8")).toContain("never authorizes a UI fallback");
+      expect(await readFile(join(dir, "skills", "wowidea", "SKILL.md"), "utf8")).toContain("direct API");
       const config = join(dir, "config", "config.json"), skill = join(dir, "skills", "wowidea", "SKILL.md");
       await writeFile(config, '{"profiles":{"private":"keep unchanged"}}');
       const before = await readFile(config, "utf8");

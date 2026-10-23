@@ -14,7 +14,7 @@ import { localQuote, payloadHash, Quote, saveQuote } from "./preflight.js";
 import { approveManifest, creativeHash, readManifest, seedancePayload, uploadReferences, validateManifest, validateStoryboardQc } from "./seedance.js";
 import { submitAsyncWithRecovery, submitImageWithRecovery, listSubmissions, recoverSubmission, readGeneration, taskStatus, taskRows, generationSubmitTimeoutMs } from "./submission.js";
 import { compactModelRow, DRAFT_ALIAS_NOTE, findModel, formatModelGroups, matchesModelType, registryEntry, routeModel, validateCapabilities } from "./models.js";
-import { initProject, readProject, recordCreation } from "./project.js";
+import { initProject, readProject, recordCreation, requireProject } from "./project.js";
 import { guideRegistry, guideInfo, showGuide } from "./guides.js";
 import { prepareVideoPayload, withOmniContent } from "./video-payload.js";
 
@@ -25,8 +25,6 @@ import { autoRoute, applyPlatformEstimates } from './routing.js';
 import { normalizeRequest } from './request-normalization.js';
 import { prepareReferences, uploadMedia, writeRun, refreshRun, referenceIdentity, runFile } from './media.js';
 import { mediaInput } from './media-input.js';
-import { bindCanvasProject, canvasProjectUrl, ensureCanvasBinding, readCanvasBinding, verifyCanvasBinding } from './canvas-binding.js';
-import { generateOnCanvas } from './canvas-generation.js';
 import { capabilitiesBrief, capabilitiesDocument, formatCapabilitiesBrief } from './capabilities.js';
 import { loadModelCatalog } from './catalog.js';
 import { parseManifest, runBatch, type BatchClient } from './batch.js';
@@ -35,21 +33,21 @@ import { finalizeDraft } from './finalize.js';
 import { planLayers, renderLayers } from './layers.js';
 import { applyDraftContract, canFallback, endpointFor, isFinalizeModel, modelCard, resolveTask, seedanceWirePayload } from './task-router.js';
 
-interface GlobalOptions extends OutputOptions { profile?: string; canvasProfile?: string; baseUrl?: string; timeout: string; noColor?: boolean; apiKey?: string; apiKeyStdin?: boolean }
+interface GlobalOptions extends OutputOptions { profile?: string; baseUrl?: string; timeout: string; noColor?: boolean; apiKey?: string; apiKeyStdin?: boolean }
 const program = new Command();
 program.name("wowidea").description("Images, video, and layers on wowidea.top. Start: wowidea capabilities --brief").version("0.8.0")
   .addHelpText("after", `
 Examples:
   wowidea capabilities --brief
   wowidea models by-task direction --json
-  wowidea image generate --task typography --prompt "海报标题" --json --direct
-  wowidea video generate --task video --prompt "缓慢推近" --duration 5 --json --direct
+  wowidea project init --dir . --name "项目名称"
+  wowidea image generate --task typography --prompt "海报标题" --json
+  wowidea video generate --task video --prompt "缓慢推近" --duration 5 --json
   wowidea video finalize <draftId> --yes
   wowidea batch run --manifest jobs.json --concurrency 6 --json
   wowidea key ./subject.png --out ./cutout.png
 `)
   .option("--profile <name>", "configuration profile")
-  .option("--canvas-profile <name>", "separate Canvas OAuth profile")
   .option("--base-url <url>", "EasyAI server URL")
   .option("--json", "stable JSON output")
   .option("--jsonl", "one JSON object per line")
@@ -99,12 +97,7 @@ localProject.command("init").option("--dir <path>", "programme directory", ".").
 localProject.command("show").option("--dir <path>", "programme directory", ".").action(async (o, c) => output(await readProject(o.dir), c));
 localProject.command("validate").option("--dir <path>", "programme directory", ".").action(async (o, c) => { const result = await readProject(o.dir); await output({ valid: true, ...result }, c); });
 localProject.command("record").requiredOption("--file <path>", "creation JSON").option("--dir <path>", "programme directory", ".").action(async (o, c) => output(await recordCreation(o.dir, await jsonInput(o)), c));
-localProject.command('setup').option('--dir <path>', 'project directory', '.').option('--name <name>', 'local and remote Canvas project name').option('--update', 'explicitly update managed runtime and unmodified skills').option('--no-canvas', 'install files without creating a remote Canvas binding').action(async (o,c) => output(await setupProject(o.dir, o.update, undefined, o.name, globals(c).canvasProfile, o.canvas),c));
-const projectCanvas = localProject.command('canvas').description('Show, verify, or explicitly replace this directory Canvas binding');
-projectCanvas.command('show').option('--dir <path>', 'project directory', '.').action(async(o,c)=>{ const binding=await readCanvasBinding(o.dir); await output({...binding,canvasUrl:canvasProjectUrl(binding.projectId)},c); });
-projectCanvas.command('verify').option('--dir <path>', 'project directory', '.').action(async(o,c)=>{ const binding=await verifyCanvasBinding(o.dir,globals(c).canvasProfile); await output({...binding,canvasUrl:canvasProjectUrl(binding.projectId)},c); });
-projectCanvas.command('open').description('Return the bound Canvas URL for a Codex side panel; never launches a browser').option('--dir <path>', 'project directory', '.').action(async(o,c)=>{ const binding=await verifyCanvasBinding(o.dir,globals(c).canvasProfile); await output({projectId:binding.projectId,projectName:binding.projectName,canvasUrl:canvasProjectUrl(binding.projectId),presentation:'codex-right-sidebar'},c); });
-for (const action of ['bind','switch'] as const) projectCanvas.command(action).argument('<projectId>').option('--dir <path>', 'project directory', '.').action(async(id,o,c)=>output(await bindCanvasProject(o.dir,id,globals(c).canvasProfile || 'default',action==='switch'),c));
+localProject.command('setup').option('--dir <path>', 'project directory', '.').option('--name <name>', 'project name when initializing').option('--update', 'explicitly update managed runtime and unmodified skills').action(async (o,c) => output(await setupProject(o.dir, o.update, undefined, o.name),c));
 const prices = program.command('prices');
 prices.command('sync').requiredOption('--url <https-url>', 'verified public wowidea.prices/v1 snapshot URL').action(async(o,c)=>output(await syncPrices(o.url),c));
 prices.command('show').action(async (_o,c) => output(await loadPrices() || { available: false, reason: 'Import a website price snapshot; public price endpoint not verified.' },c));
@@ -211,7 +204,7 @@ registerMedia(video, 'video');
 taskCommands(video,'video');
 video.addHelpText("after", `
 Examples:
-  wowidea video generate --task video --prompt "缓慢推近" --duration 5 --json --direct
+  wowidea video generate --task video --prompt "缓慢推近" --duration 5 --json
   wowidea video finalize <draftId>
   wowidea video finalize <draftId> --yes --json
 `);
@@ -233,7 +226,7 @@ video.command("finalize").description("Seedance 2.5 成片 from a successful dra
 
 function registerMedia(parent: Command, kind: 'image'|'video') {
   const collect = (value: string, prior: string[]) => [...prior, value];
-  for (const action of ['generate','edit'] as const) dataOptions(parent.command(action).description(`${kind} ${action}. Example: wowidea ${kind} ${action} --prompt "..." ${kind === "video" && action === "generate" ? "--task video --duration 5 " : ""}--json --direct`)).option('--direct', 'use the legacy non-Canvas generation API explicitly').option('--idempotency-key <key>', 'optional request key; automatically persisted when omitted').option('--manifest <path>')
+  for (const action of ['generate','edit'] as const) dataOptions(parent.command(action).description(`${kind} ${action}. Example: wowidea ${kind} ${action} --prompt "..." ${kind === "video" && action === "generate" ? "--task video --duration 5 " : ""}--json`)).option('--direct', 'accepted for compatibility; generation always uses the direct API').option('--idempotency-key <key>', 'optional request key; automatically persisted when omitted').option('--manifest <path>')
     .option('--prompt <text>').option('--model <name>').option('--resolution <value>').option('--ratio <value>').option('--duration <seconds>', 'video duration', Number).option('--mode <value>', 'website generation mode')
     .option('--audio', 'enable video audio').option('--no-audio', 'disable video audio').option('--quality <value>').option('--format <value>')
     .option('--reference <path-or-url>', 'image reference; repeat for multiple images', collect, []).option('--video-reference <path-or-url>', 'video reference', collect, []).option('--audio-reference <path-or-url>', 'audio reference', collect, [])
@@ -247,12 +240,8 @@ function registerMedia(parent: Command, kind: 'image'|'video') {
     if (plan && !payload.model) payload.model = plan.alias || plan.model;
     if (plan?.params) { for (const [key, value] of Object.entries(plan.params)) if (payload[key] === undefined) payload[key] = value; }
     if (isFinalizeModel(String(payload.model || ''))) throw new CliError('Seedance 2.5 成片不能重新提交提示词。运行 wowidea video finalize <draftId> --yes', ExitCode.Usage);
+    await requireProject(o.projectDir || '.');
     const chain = plan ? [...new Set([String(payload.model || plan.model), ...plan.chain])] : [String(payload.model || '')];
-    if (!o.direct) {
-      const canvasKey = o.idempotencyKey || (o.allowReroll ? randomUUID() : `canvas-${payloadHash({ kind, action, payload })}`);
-      const result = await generateOnCanvas({ api, kind, action, payload, projectDir: o.projectDir, outputDir: o.dir, profile: globals(c).canvasProfile, wait: o.wait, requestKey: canvasKey });
-      await output(result,c); return;
-    }
     const basePayload = { ...payload };
     const explicitKey = o.idempotencyKey as string | undefined;
     const attempts = (o.task ? chain : [String(basePayload.model || "")]).filter((name, index, all) => Boolean(name) && all.indexOf(name) === index);
@@ -445,7 +434,7 @@ async function describeTask(task: string, fast: boolean, cmd: Command) {
     task: resolved.task, label: resolved.label, media: resolved.media, model: resolved.model, alias: resolved.alias, params: resolved.params, chain: resolved.chain,
     finalizeOnly: resolved.finalizeOnly, source: resolved.source, endpoint: endpointFor(resolved.media),
     ...(resolved.alias === "Seedance-2.5-Draft" ? { note: DRAFT_ALIAS_NOTE } : {}),
-    command: resolved.command || `wowidea ${generate} generate --task ${resolved.task} --prompt "..." --json --direct`,
+    command: resolved.command || `wowidea ${generate} generate --task ${resolved.task} --prompt "..." --json`,
     message: resolved.message,
     entries: resolved.entries.map(entry => ({ alias: entry.alias, display: entry.display, requestModel: entry.requestModel, quality: entry.quality, speed: entry.speed, fallback: entry.fallback, draft: Boolean(entry.draft), finalizeOnly: Boolean(entry.finalizeOnly), ...(entry.alias === "Seedance-2.5-Draft" ? { note: DRAFT_ALIAS_NOTE } : {}) })),
   };
@@ -460,6 +449,7 @@ models.action(async (o, c) => {
 const batch = program.command("batch").description("Concurrent resumable jobs. Never submits a final video.");
 batch.command("run").description("Run a JSON, CSV, or simple YAML manifest. Example: wowidea batch run --manifest jobs.json --concurrency 6 --json").requiredOption("--manifest <file>", "jobs file").option("--concurrency <n>", "global in-flight limit", "6").option("--per-model <n>", "in-flight limit per model", "2").option("--out <dir>", "download directory", "wowidea-output/batch").option("--state <file>", "resume file").action(async (o, c) => {
   const api = await apiFor(c);
+  await requireProject(".");
   const jobs = parseManifest(await readFile(resolve(o.manifest), "utf8"), o.manifest);
   const client: BatchClient = {
     async submit(job) {
@@ -480,6 +470,7 @@ batch.command("run").description("Run a JSON, CSV, or simple YAML manifest. Exam
 program.command("layers").description("Transparent PNG layers. Example: wowidea layers --layer subject --from ./green.png --out ./layers --json").option("--layer <name>", "layer name; repeat for more", (value: string, prior: string[]) => [...prior, value], [] as string[]).option("--scene <text>", "shared scene description", "").option("--out <dir>", "output directory", "wowidea-output/layers").option("--key <color>", "auto or #RRGGBB", "auto").option("--from <image>", "key this image instead of generating").option("--task <task>", "routing task when generating", "layering").action(async (o, c) => {
   const names = o.layer as string[];
   if (!names.length) throw new CliError("Pass at least one --layer.", ExitCode.Usage);
+  if (!o.from) await requireProject(".");
   const generate = o.from
     ? async () => readFile(resolve(o.from))
     : async (request: { name: string; prompt: string }) => {

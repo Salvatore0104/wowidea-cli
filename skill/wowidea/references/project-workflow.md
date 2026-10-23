@@ -1,6 +1,6 @@
 # Project preferences and records
 
-Optional for ongoing projects; one-off images need no archive. Use the user's directory, not an inferred neighbouring project. Commands run offline:
+Required before image or video generation, batch runs, and generated layers. Check every directory before use. One-off images still need `project init`; they do not need stage settings. Use the user's directory, not an inferred neighbouring project. Commands run offline:
 
 ```text
 wowidea --json project init --dir <directory> --name <name>

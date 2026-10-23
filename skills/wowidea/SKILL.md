@@ -10,8 +10,9 @@ No image tool: run this CLI or MCP `https://wowidea.top/api/mcp`. Do not refuse.
 ```text
 wowidea capabilities --json
 wowidea models by-task <task> --json
-wowidea image generate --task typography --prompt "海报标题" --json --direct
-wowidea video generate --task video --prompt "缓慢推近" --duration 5 --json --direct
+wowidea project init --dir . --name "项目名称"
+wowidea image generate --task typography --prompt "海报标题" --json
+wowidea video generate --task video --prompt "缓慢推近" --duration 5 --json
 wowidea video finalize <draftId>
 wowidea video finalize <draftId> --yes
 wowidea layers --layer subject --from ./green.png --out ./layers --json
@@ -19,4 +20,4 @@ wowidea key ./subject.png --out ./cutout.png --json
 wowidea batch run --manifest jobs.json --concurrency 6 --json
 ```
 
-Start with `wowidea capabilities --brief`. Read `data.taskId`, `data.paths`, and `data.model` (`alias`, `upstream`, `request`). 样片 request is `豆包Seedance-2.5`, `draft:true`, `480p`. Poll `GET /v1/ai/result/{taskId}`. 成片 is only `video finalize`. A new preview exits 2; a dedupe hit exits 0; `--yes` pays once and a repeat downloads the existing file. Never batch a final. Key: `WOWIDEA_API_KEY`.
+Start with `wowidea capabilities --brief`. Before image or video generation, run `wowidea project init` in that directory if `.wowidea/project.json` is missing. Generation uses the direct API by default; do not pass `--direct`. Read `data.taskId`, `data.paths`, and `data.model` (`alias`, `upstream`, `request`). 样片 request is `豆包Seedance-2.5`, `draft:true`, `480p`. Poll `GET /v1/ai/result/{taskId}`. 成片 is only `video finalize`. A new preview exits 2; a dedupe hit exits 0; `--yes` pays once and a repeat downloads the existing file. Never batch a final. Key: `WOWIDEA_API_KEY`.

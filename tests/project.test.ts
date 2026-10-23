@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { initProject, readProject, validateProject, recordCreation, referencePlan } from "../src/project.js";
+import { initProject, readProject, requireProject, validateProject, recordCreation, referencePlan } from "../src/project.js";
 
 describe("local programme workflow", () => {
   it("creates a portable blank project, never overwrites preferences or promotes experiments", async () => {
@@ -19,6 +19,14 @@ describe("local programme workflow", () => {
       await expect(recordCreation(dir, draft)).rejects.toThrow(/id exists/);
       await expect(recordCreation(dir, { ...draft, id: "../escape" })).rejects.toThrow(/safe unique/);
       await expect(recordCreation(dir, { ...draft, id: "qc", qc: { verdict: "pass", evidence: [] } })).rejects.toThrow(/observations/);
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  });
+  it("requires an initialized project before use and does not invent one", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "wowidea-require-"));
+    try {
+      await expect(requireProject(dir)).rejects.toThrow(/尚未初始化/);
+      await initProject(dir, "已初始化");
+      await expect(requireProject(dir)).resolves.toMatchObject({ project: { name: "已初始化" } });
     } finally { await rm(dir, { recursive: true, force: true }); }
   });
   it("distinguishes stage pixels from generated output and requires evidence for accepted direction", async () => {

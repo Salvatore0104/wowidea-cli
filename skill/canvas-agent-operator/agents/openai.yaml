@@ -1,4 +1,0 @@
-interface:
-  display_name: "无限画布 Agent 操作"
-  short_description: "通过 CLI 操作桌面内嵌或线上独立的无限画布"
-  default_prompt: "Use $canvas-agent-operator to select the Desktop embedded or standalone online Canvas mode, resolve the intended project, and operate it directly."

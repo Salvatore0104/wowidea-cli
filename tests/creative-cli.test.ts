@@ -44,7 +44,7 @@ describe("creative CLI loop with a mock website", () => {
     const project = join(work, "project"); await mkdir(project);
     const env = { EASYAI_API_KEY: "mock-temp-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}`, EASYAI_CONFIG_DIR: join(work, "config") };
     try {
-      const setup = await runCli(["--json", "project", "setup", "--dir", project, "--no-canvas"], env, work);
+      const setup = await runCli(["--json", "project", "setup", "--dir", project], env, work);
       expect(setup.code, setup.err).toBe(0);
       expect(JSON.parse(setup.out).data.root).toBe(resolve(project));
       await access(join(project, ".agents", "skills", "wowidea", "SKILL.md"));
@@ -53,7 +53,7 @@ describe("creative CLI loop with a mock website", () => {
       const agents = await readFile(join(project, "AGENTS.md"), "utf8");
       expect(agents).toContain("wowidea:begin");
       expect(agents.match(/wowidea:begin/g)).toHaveLength(1);
-      expect((await runCli(["--json", "project", "setup", "--dir", project, "--no-canvas"], env, work)).code).toBe(0);
+      expect((await runCli(["--json", "project", "setup", "--dir", project], env, work)).code).toBe(0);
       expect((await readFile(join(project, "AGENTS.md"), "utf8")).match(/wowidea:begin/g)).toHaveLength(1);
 
       const route = await runCli(["--json", "models", "route", "--kind", "image", "--purpose", "文字排版", "--stage", "final"], env, work);

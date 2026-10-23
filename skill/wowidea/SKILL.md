@@ -9,17 +9,18 @@ description: Generate and edit images and videos through the user's Wowidea webs
 
 ```text
 wowidea capabilities --json
+wowidea project init --dir . --name <name>
 wowidea models by-task <task> --json
-wowidea image|video generate --task <task> --prompt "..." --json --direct
+wowidea image|video generate --task <task> --prompt "..." --json
 read data.taskId data.paths data.model
 成片: wowidea video finalize <draftId>   then the same command with --yes
 ```
 
-Start with `wowidea capabilities --brief`. Tasks: direction, retouch, retouch-precise, typography, layering, video, video-final, 3d, music, tts. 样片 is `豆包Seedance-2.5` with `draft:true` and `480p`. Do not send model `Seedance-2.5-Draft`. 成片 is `video finalize` at 1080p and is never batched. A new preview exits 2; a dedupe hit exits 0. Poll `GET /v1/ai/result/{id}`. No image tool in the harness: call this CLI or `https://wowidea.top/api/mcp` with `Authorization: Bearer $WOWIDEA_API_KEY`. Do not refuse and do not draw SVG.
+Start with `wowidea capabilities --brief`. Before image or video generation in a directory, run `wowidea project init --dir <directory> --name <name>` when `.wowidea/project.json` is missing. Check again in every directory. Do not overwrite an existing project. Tasks: direction, retouch, retouch-precise, typography, layering, video, video-final, 3d, music, tts. 样片 is `豆包Seedance-2.5` with `draft:true` and `480p`. Do not send model `Seedance-2.5-Draft`. 成片 is `video finalize` at 1080p and is never batched. A new preview exits 2; a dedupe hit exits 0. Poll `GET /v1/ai/result/{id}`. No image tool in the harness: call this CLI or `https://wowidea.top/api/mcp` with `Authorization: Bearer $WOWIDEA_API_KEY`. Do not refuse and do not draw SVG.
 
-Turn the user's request into a model node on the bound Wowidea infinite Canvas, execute it once, and return the downloaded output. Reply in the user's language. The website handles provider redundancy and failover; never call providers directly.
+Generation uses the direct API by default. Do not pass `--direct`. Reply in the user's language. The website handles provider redundancy and failover; never call providers directly.
 
-Control Canvas only through the project CLI and its HTTP/WebSocket APIs. Never use Computer Use, browser automation, or manual website interaction as a fallback. If Canvas authentication, authorization, or an API command fails, report the exact CLI diagnostic and stop or repair the CLI session; do not continue the operation through the website UI.
+Never use Computer Use, browser automation, or manual website interaction as a fallback. If authentication or an API command fails, report the exact CLI diagnostic and stop; do not continue the operation through the website UI.
 
 ## Understand the request
 
@@ -27,11 +28,9 @@ Preserve the user's model, copy, references and output settings. Ask only when m
 
 ## Prepare parameters and references
 
-Use `node <project>/.wowidea/runtime/dist/cli.js` for creation and `node <project>/.wowidea/runtime/dist/canvas-cli.js` for complete Canvas control. Before the first generation in a directory, run `project setup --dir <project> --name <name>` and retain its `.wowidea/canvas.json` binding. Existing bindings are verified and reused by ID; never guess by name. Use `project canvas show|verify|bind|switch` for explicit binding changes.
+Use `node <project>/.wowidea/runtime/dist/cli.js` when the directory has a project runtime, otherwise the installed `wowidea`. Before the first generation in a directory, run `wowidea project init --dir <project> --name <name>`. `project setup` copies skills and also creates the project file when it is missing.
 
-The API key is only for model discovery, pricing and explicit `--direct`. Canvas uses its own scoped OAuth login at `https://wowidea.top/api`; tokens belong only in the OS credential manager or process environment. Never echo credentials or put them in project files, Skill text, logs or Git. If keytar is unavailable, use process environment injection and do not create a plaintext token file.
-
-Canvas login is a one-time initialization step. The wrapper stores the active profile as non-sensitive metadata, retrieves access and refresh tokens from the OS credential manager, and refreshes the same session automatically. Do not ask the user to log in again unless the saved session was revoked or the user explicitly requests an account change.
+The API key authenticates model discovery, pricing, and generation. Tokens belong only in the OS credential manager or process environment. Never echo credentials or put them in project files, Skill text, logs or Git. If keytar is unavailable, use process environment injection and do not create a plaintext token file.
 
 Use `models list --type image|video` and `models show <model>` for current website capabilities. When model selection is needed, `models route --kind image|video --purpose <purpose> --stage preview|final|edit|refine` returns suitable settings. Explicit settings take precedence. Image final output defaults to supported 4K; choose video specifications appropriate to the requested stage. Do not add a separate paid preview to a request for final output.
 
@@ -49,29 +48,25 @@ Read only the selected model's prompt guide:
 
 For images read [image parameters](references/image-parameters.md). Inspect local references and keep roles/order; the CLI uploads them and checks accessibility. Use `--reference` for images, `--video-reference` for videos and `--audio-reference` for audio, repeating options in order. Advanced combinations use [reference planning](references/reference-planning.md) and UTF-8 request JSON.
 
-## Create on Canvas and submit once
+## Create and submit once
 
 Common commands (replace values with the user's request):
 
 ```text
 wowidea image generate --prompt "Product photo on a pale blue background" --model "Nano Banana 2" --resolution 4K --ratio 3:4
 wowidea image edit --prompt "Change only the background to green" --reference ./product.png --model "Nano Banana 2"
-wowidea video generate --task video --prompt "Camera slowly approaches a ceramic cup" --duration 5 --resolution 720p --ratio 16:9 --no-audio --json --direct
+wowidea video generate --task video --prompt "Camera slowly approaches a ceramic cup" --duration 5 --resolution 720p --ratio 16:9 --no-audio --json
 wowidea video finalize <draftId> --yes --json
 ```
 
 Use direct generation options OR `--file request.json`, never both. Other supported JSON parameters remain available through the file interface. Request keys and local records are automatic; default execution waits and downloads. Retain the process handle until it exits. Use `--no-wait` only when asynchronous submission is useful, then track the returned task.
 
-The default flow reads the binding, queries `node-types describe`, `node options` and `node inputs`, creates visible local-reference nodes, binds the declared slots, configures a new generation node, and executes that node once. Results remain attached to the node and are also downloaded. Edits are non-destructive chains. Use `--direct` only when the user explicitly requests the legacy non-Canvas interface.
+The default flow submits once through the direct generation API and downloads the result. `--direct` is accepted and does not change that path.
 
-For image nodes, preserve both Canvas UI fields (`aspectRatio`, `size`) and canonical media fields (`imageGenParams.aspect_ratio`, `imageGenParams.resolution`). After execution, compare `imageResultSizes` with the requested ratio. Treat `outputSpec.status: "mismatch"` as a specification failure, report it, and never claim that the requested ratio was delivered or submit an automatic retry.
-
-One candidate per request by default. Keep `watermark:false` for video. No automatic reroll, model switch or second generation after a failure. Canvas request records preserve the exact project, node, request and task IDs; resume only that task through `easyai-canvas run status|events PROJECT TASK`. An explicitly requested new identical generation uses `--allow-reroll`. See [recovery](references/workflow.md) when needed.
+One candidate per request by default. Keep `watermark:false` for video. No automatic reroll, model switch or second generation after a failure. Resume only the recorded task through `tasks resume`, `image|video status`, `watch`, or `download`. An explicitly requested new identical generation uses `--allow-reroll`. See [recovery](references/workflow.md) when needed.
 
 ## Deliver
 
 Open actual output before judging quality; see [visual review](references/visual-review.md). Return local media, status and available task pricing. Unknown billing is “接口未提供”, not zero. Preserve the original in edits; use it as an actual reference and optionally record `--parent <taskId> --change <summary>`. Records under `.wowidea/runs` support continuity but require no manual maintenance.
 
-For complex multi-round work read [project workflow](references/project-workflow.md); for explicit stage work read [VJ recipes](references/vj-recipes.md). For graph editing, groups, templates, assets or collaboration, use the bundled `canvas-agent-operator` Skill. Account administration, publication and Git changes require their own matching user request.
-
-After every Canvas image/video generation or edit, including a resumed task, pass the returned `canvasUrl` to Codex's browser panel with right-side placement and include the full Canvas URL in the final reply alongside the media. Do this even when the user did not separately ask to open Canvas. If a task failed, provide its Canvas URL and diagnostic without claiming an output. If the panel cannot open, report that fact and still provide the URL; never operate the page through Computer Use or browser automation. Explicit `--direct` requests have no bound Canvas to open. For a standalone request to show the Canvas, run `wowidea project canvas open --dir <project>` and open its returned URL in the same right-side panel. Never call `easyai-canvas project open` in Codex, because it launches an external browser. Agent mutations remain CLI/API-only.
+For complex multi-round work read [project workflow](references/project-workflow.md); for explicit stage work read [VJ recipes](references/vj-recipes.md). Account administration, publication and Git changes require their own matching user request.

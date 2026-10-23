@@ -34,6 +34,7 @@ describe("CLI gates with a mock website", () => {
     const dir = await mkdtemp(join(tmpdir(), "wowidea-cost-cli-")); dirs.push(dir);
     const env = { EASYAI_CONFIG_DIR: dir, EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
     try {
+      expect((await run(["project", "init"], env)).code).toBe(0);
       let args = ["--json", "image", "generate", "--direct", "--data", '{"prompt":"poster"}', "--idempotency-key", "one"];
       if (kind === "minimax") args = ["--json", "video", "generate", "--direct", "--data", JSON.stringify({ model: "MiniMax-H3", prompt: "product", duration: 9, resolution: "720p", aspect_ratio: "16:9", audio: false }), "--idempotency-key", "one"];
       if (kind === "video") {
@@ -68,6 +69,7 @@ describe("CLI gates with a mock website", () => {
     const dir = await mkdtemp(join(tmpdir(), "wowidea-draft-cli-")); dirs.push(dir);
     const env = { EASYAI_CONFIG_DIR: dir, EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
     try {
+      expect((await run(["project", "init"], env)).code).toBe(0);
       const result = await run(["--json", "video", "generate", "--direct", "--no-wait", "--data", JSON.stringify({ model: "Seedance-2.5-Draft", prompt: "slow push", duration: 4, aspect_ratio: "16:9", audio: false })], env);
       expect(result.code, result.err).toBe(0);
       expect(asyncHeader).toBe("true");
@@ -142,6 +144,7 @@ describe("CLI gates with a mock website", () => {
     const dir = await mkdtemp(join(tmpdir(), "wowidea-process-test-")); dirs.push(dir);
     const env = { EASYAI_CONFIG_DIR: dir, EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
     try {
+      expect((await run(["project", "init"], env)).code).toBe(0);
       const args = ["--json", "image", "generate", "--direct", "--data", '{"prompt":"poster"}', "--idempotency-key", "single-request"];
       expect((await run(args, env)).code).toBe(5);
       expect((await run(args, env)).code).toBe(5);
@@ -170,6 +173,7 @@ describe("CLI gates with a mock website", () => {
     const outputDir = join(dir, "outputs");
     const env = { EASYAI_CONFIG_DIR: join(dir, "config"), EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
     try {
+      expect((await run(["project", "init"], env)).code).toBe(0);
       const result = await run(["--json", "image", "generate", "--direct", "--data", '{"prompt":"poster"}', "--idempotency-key", "download-once", "--dir", outputDir], env);
       expect(result.code, result.err).toBe(0);
       const data = JSON.parse(result.out).data;
@@ -198,9 +202,37 @@ describe("CLI gates with a mock website", () => {
     const dir = await mkdtemp(join(tmpdir(), "wowidea-delayed-result-")); dirs.push(dir);
     const env = { EASYAI_CONFIG_DIR: join(dir, "config"), EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
     try {
+      expect((await run(["project", "init"], env)).code).toBe(0);
       const result = await run(["--json", "image", "generate", "--direct", "--data", '{"prompt":"poster"}', "--idempotency-key", "delayed-result", "--dir", join(dir, "out")], env);
       expect(result.code, result.err).toBe(0); expect(JSON.parse(result.out).data.paths).toHaveLength(1);
       expect(posts).toBe(1); expect(taskReads).toBe(2);
     } finally { await new Promise<void>(r => server.close(() => r())); }
   }, 10_000);
+  it("requires project init and submits through the direct API when --direct is omitted", async () => {
+    let posted = "";
+    const server = createServer((req, res) => {
+      res.setHeader("Content-Type", "application/json");
+      if (req.url === "/api/v1/models") { res.end(JSON.stringify({ data: [{ id: "Nano Banana 2", capabilities: { image_generate: { output_resolutions: ["1K"], aspect_ratio_allowed: ["1:1"] } } }] })); return; }
+      if (req.url === "/api/integration-platform/models/estimatedBilling") { let body = ""; req.on("data", d => body += d); req.on("end", () => res.end(JSON.stringify({ amount: 1, estimatedPower: 1, calculation: {} }))); return; }
+      if (req.method === "POST" && req.url === "/api/v1/images/generations") { let body = ""; req.on("data", d => body += d); req.on("end", () => { posted = body; res.end(JSON.stringify({ taskId: "direct-job", status: "queued" })); }); return; }
+      res.end(JSON.stringify({ items: [] }));
+    });
+    await new Promise<void>(r => server.listen(0, "127.0.0.1", r));
+    const dir = await mkdtemp(join(tmpdir(), "wowidea-direct-default-")); dirs.push(dir);
+    const env = { EASYAI_CONFIG_DIR: dir, EASYAI_API_KEY: "mock-account-key", EASYAI_BASE_URL: `http://127.0.0.1:${(server.address() as any).port}` };
+    try {
+      const missing = await run(["--json", "image", "generate", "--prompt", "cup", "--no-wait"], env);
+      expect(missing.code).toBe(2);
+      expect(missing.err).toContain("尚未初始化");
+      const canvas = await run(["project", "canvas", "show"], env);
+      expect(canvas.code).not.toBe(0);
+      expect(canvas.err).toContain("unknown command");
+      expect((await run(["project", "init", "--name", "杯子"], env)).code).toBe(0);
+      const result = await run(["--json", "image", "generate", "--prompt", "cup", "--no-wait"], env);
+      expect(result.code, result.err).toBe(0);
+      expect(JSON.parse(result.out).data.taskId).toBe("direct-job");
+      expect(JSON.parse(posted).prompt).toBe("cup");
+      expect(posted).not.toContain("canvas");
+    } finally { await new Promise<void>(r => server.close(() => r())); }
+  });
 });

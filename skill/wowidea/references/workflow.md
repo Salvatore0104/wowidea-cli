@@ -1,6 +1,6 @@
 # Execute and recover
 
-Use the project-local CLI when initialized, otherwise installed `wowidea`. Direct options or a UTF-8 request file are sufficient. Generate/edit automatically saves a request key, waits and downloads; explicit `--idempotency-key` remains available. Local references upload through the website and use returned expiry/accessibility checks. Retain the running process until completion.
+Use the project-local CLI when a runtime is installed, otherwise installed `wowidea`. Before image or video generation, the directory must contain `.wowidea/project.json` from `wowidea project init`. Generation uses the direct API by default. Direct options or a UTF-8 request file are sufficient. Generate/edit automatically saves a request key, waits and downloads; explicit `--idempotency-key` remains available. Local references upload through the website and use returned expiry/accessibility checks. Retain the running process until completion.
 
 After interruption use `tasks resume <key> --wait --dir <outputs>`. With a known task ID use `image|video status <id>`, `watch <id>` or `download <id>`. These observe the same task. The website handles provider failover; CLI observation retries never create another generation. Without proof of task ownership the request stays uncertain; nearby tasks are not automatically adopted.
 

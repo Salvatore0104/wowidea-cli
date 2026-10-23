@@ -4,22 +4,24 @@
 
 ## 首次使用文案
 
-> 请初始化当前目录并绑定同名 Wowidea 无限画布。以后图片、视频生成与修改默认在画布创建节点链，结果同时保留和下载；只有我明确指定 --direct 时才走旧接口。视频默认 Seedance 2.5 样片。成片只用 `wowidea video finalize <draftId> --yes`，先看估价。watermark:false。
+> 请在当前目录用 wowidea-cli 初始化项目，然后再生成。每次使用前都要确认已经执行 `wowidea project init`。生成默认走直接接口，不要加 --direct。视频默认 Seedance 2.5 样片。成片只用 `wowidea video finalize <draftId> --yes`，先看估价。watermark:false。
 
 ## 初始化
 
 ```bash
+wowidea --json project init --dir <项目目录> --name <名称>
 wowidea --json project setup --dir <项目目录>
 ```
 
-- 固定版本 CLI 写入 `<项目>/.wowidea/runtime/dist`，内部参考同时写入 `.wowidea/runtime/skill`。
-- 创建专属远端画布并将精确 ID 写入 `<项目>/.wowidea/canvas.json`；已有绑定只验证和复用。
-- 项目本地安装 Wowidea、EasyAI、GPT Image 2.5 和 Canvas Operator 四个 Skill。
+- 使用前必须有 `.wowidea/project.json`。`project init` 创建它，并且拒绝覆盖。每个目录都要单独初始化。
+- `project setup` 把固定版本 CLI 写入 `<项目>/.wowidea/runtime/dist`，内部参考同时写入 `.wowidea/runtime/skill`。目录里还没有项目文件时，setup 会先初始化。
+- 项目本地安装 Wowidea、EasyAI 和 GPT Image 2.5 三个 Skill。
 - 在项目指令文件中维护一段可重复更新的 Wowidea 管理段；已存在 `AGENTS.override.md` 时写入该文件。
-- 已存在用户文件、偏好或历史记录时不覆盖；重复初始化是幂等的。
+- 已存在用户文件、偏好或历史记录时不覆盖；重复 setup 是幂等的。
 - 需要升级固定版本或合并已修改资源时显式执行 `wowidea project setup --dir <项目目录> --update`；被用户改过的文件会列入 `preserved`，不会静默覆盖。
-- 普通 API Key 与 Canvas OAuth 分离。两者只保存在系统凭据库或进程环境，项目、Skill、请求记录和 Git 都不保存凭据。
+- API Key 只保存在系统凭据库或进程环境，项目、Skill、请求记录和 Git 都不保存凭据。
 - 初始化和普通图片、视频项目不要求舞台信息；舞台与 VJ 流程仅在明确需要时加载。
+- 生成默认走直接接口。
 
 初始化后，本次任务直接读取返回的项目指令；之后从该项目启动的任务通过项目指令与本地 Skill 自动发现规则，无需再次输入 `/wowidea`。
 
@@ -57,15 +59,14 @@ wowidea --json image generate --file request.json --idempotency-key <UUID> --dir
 wowidea --json image edit     --file edit.json    --idempotency-key <UUID> --parent <源任务ID> --change "<修改说明>"
 wowidea --json video generate --file request.json --idempotency-key <UUID>
 wowidea --json video edit     --file edit.json    --idempotency-key <UUID> --parent <源任务ID> --change "<修改说明>"
-wowidea --json image generate --direct --file request.json # 仅显式兼容旧接口
 ```
 
-- Seedance 必须使用经过分镜评审和明确批准的 manifest，任何创意或计费设置变化都会使批准失效。
-- 本地素材在画布中创建可见来源节点并通过 Canvas 上传；生成节点通过实时声明的槽位绑定和连线。
+- 图片和视频生成前，目录必须已经初始化。
+- Seedance 成片只用 `wowidea video finalize <draftId> --yes`。样片可以直接生成。
 - `image_urls`／`video_urls` 接受 HTTPS URL 或本地路径。编辑保留选定版本为参考，并记录 `--parent` 与 `--change`。
 - 默认等待并下载；`--no-wait` 只返回受理结果。提交前持久化唯一任务键，任务受理后只查询原任务。
 - 超时、进程中断、结果链接暂缺或下载失败都不会自动再次付费生成；改用 `status`／`watch`／`download` 或 `tasks resume`。
-- 每轮记录写入 `.wowidea/canvas-runs/<key>.json`，保存精确 project/node/request/task ID。修改生成新节点和连线，原版不被覆盖。
+- 运行记录写入 `.wowidea/runs/`。修改使用新的请求，原记录不被覆盖。
 
 ## 交付与验收
 

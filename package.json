@@ -5,13 +5,11 @@
   "type": "module",
   "bin": {
     "wowidea": "dist/cli.js",
-    "easyai": "dist/cli.js",
-    "easyai-canvas": "dist/canvas-cli.js"
+    "easyai": "dist/cli.js"
   },
   "files": [
     "dist",
     "skill/easyai",
-    "skill/canvas-agent-operator",
     "skill/gpt-image-25-prompt",
     "skill/wowidea",
     "skills",
@@ -22,7 +20,7 @@
     "scripts"
   ],
   "scripts": {
-    "build": "tsup src/cli.ts src/canvas-cli.ts --format esm --clean --external keytar --external sharp",
+    "build": "tsup src/cli.ts --format esm --clean --external keytar --external sharp",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "npm run resources:check && npm run typecheck && npm run build && npm test",
@@ -37,7 +35,6 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@easyaigc/canvas-cli": "0.5.0",
     "@aws-sdk/client-s3": "^3.883.0",
     "@aws-sdk/s3-request-presigner": "^3.883.0",
     "commander": "^14.0.0",

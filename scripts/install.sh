@@ -426,6 +426,19 @@ verify_balance() {
   return 0
 }
 
+print_init_prompt() {
+  local prompt="${DEST}/docs/init-prompt.zh.txt"
+  printf '%s\n' "新建项目并开启新对话时，把下面这段交给 AI："
+  printf '%s\n' "-----"
+  if [[ -f "$prompt" ]]; then
+    cat "$prompt"
+    printf '\n'
+  else
+    printf '%s\n' "未找到初始化提示词：${prompt}" >&2
+  fi
+  printf '%s\n' "-----"
+}
+
 verify_brief() {
   local out status
   out="$(mktmp)"
@@ -447,6 +460,7 @@ main() {
   verify_balance
   verify_brief
   printf '%s\n' "安装完成。"
+  print_init_prompt
   cleanup
 }
 
