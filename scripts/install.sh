@@ -428,7 +428,7 @@ verify_balance() {
 
 print_init_prompt() {
   local prompt="${DEST}/docs/init-prompt.zh.txt"
-  printf '%s\n' "把下面这段提示词复制给 AI 助手。每个项目在使用前都要先初始化："
+  printf '%s\n' "新建项目并开启新对话时，把下面这段交给 AI："
   printf '%s\n' "-----"
   if [[ -f "$prompt" ]]; then
     cat "$prompt"

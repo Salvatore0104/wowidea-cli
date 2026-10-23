@@ -7,9 +7,13 @@ const { version } = JSON.parse(await readFile(new URL("../package.json", import.
 describe("initialization prompt", () => {
   it("prints the same Chinese prompt from the installer and the README", async () => {
     const prompt = (await readFile(resolve("docs/init-prompt.zh.txt"), "utf8")).trim();
+    expect(prompt).toContain("这是新建项目后的新对话");
     expect(prompt).toContain("wowidea project init");
     expect(prompt).toContain("不需要加 --direct");
-    expect(await readFile(resolve("README.md"), "utf8")).toContain(prompt);
+    const readme = await readFile(resolve("README.md"), "utf8");
+    expect(readme).toContain("## 新建项目与对话时的初始化提示词");
+    expect(readme).toContain("安装完成后，新建项目并开启新对话时，把下面这段交给 AI。");
+    expect(readme).toContain(prompt);
     expect(await readFile(resolve("scripts/install.sh"), "utf8")).toContain("docs/init-prompt.zh.txt");
     expect(await readFile(resolve("scripts/install.ps1"), "utf8")).toContain("init-prompt.zh.txt");
   });

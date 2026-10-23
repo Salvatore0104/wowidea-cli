@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/sc
 irm https://raw.githubusercontent.com/Salvatore0104/wowidea-cli/master/scripts/install.ps1 | iex
 ```
 
-脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS / Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance` 和 `wowidea capabilities --brief`。密钥无效时安装仍然成功。安装结束时会打印下面的初始化提示词，方便复制给助手。
+脚本把仓库放在 `~/.wowidea-cli`（Windows 为 `%USERPROFILE%\.wowidea-cli`），执行 `npm ci`、`npm run build`、`npm link`。全局目录不可写时改为 `npm pack` 后装进 `~/.local`，不使用 sudo。再运行一次就是升级。密钥优先交给 `wowidea auth use-key` 写入系统钥匙串；钥匙串不可用时，macOS / Linux 写入 `~/.bashrc` 和 `~/.zshrc`（已有的 `~/.bash_profile` 也会更新），Windows 用 `setx` 写入当前用户环境变量。装完会运行 `wowidea balance` 和 `wowidea capabilities --brief`。密钥无效时安装仍然成功。安装成功结束时会打印「新建项目与对话时的初始化提示词」，方便贴进新项目的新对话。
 
 ### 手动安装
 
@@ -101,12 +101,12 @@ wowidea balance
 
 没有钥匙串时 CLI 会要求设置 `WOWIDEA_API_KEY`。未配置密钥时 `wowidea balance` 退出码为 3。
 
-## 安装后的初始化提示词
+## 新建项目与对话时的初始化提示词
 
-每个项目目录在使用前都要先初始化。把下面这段原样交给 AI 助手。安装脚本结束时也会打印同一段。
+安装完成后，新建项目并开启新对话时，把下面这段交给 AI。安装脚本在安装成功结束时也会打印同一段，正文在 `docs/init-prompt.zh.txt`。
 
 ```text
-请在当前项目目录用 wowidea-cli 初始化，然后再生成图片或视频。每次在一个目录里使用之前，都要先确认该目录已经初始化。没有 .wowidea/project.json 时再执行 init。已经初始化过的目录不要覆盖。
+这是新建项目后的新对话。请先用 wowidea-cli 在当前项目目录完成初始化，再生成图片或视频。每次在一个目录里使用之前，都要先确认该目录已经初始化。没有 .wowidea/project.json 时再执行 init。已经初始化过的目录不要覆盖。
 
 初始化（把项目名称换成实际名称）：
 wowidea project init --dir . --name "项目名称"
